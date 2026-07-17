@@ -899,14 +899,22 @@ export default function App() {
       fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
       color:T.textMain,maxWidth:480,margin:"0 auto",paddingBottom:selStudentId?0:72}}>
 
-      {/* Белая шапка с настоящим логотипом */}
+      {/* Чёрная шапка с логотипом */}
       {!selStudentId&&(
-        <div style={{background:"#FFFFFF",borderBottom:`1px solid ${T.border}`,
-          padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <img src={LOGO_SRC} alt="Азбука Музыки" style={{height:44,objectFit:"contain"}}/>
-          {warnCount>0&&(
-            <div style={{background:T.accent,color:"#fff",borderRadius:20,
-              padding:"4px 12px",fontSize:12,fontWeight:700}}>⚠ {warnCount}</div>
+        <div style={{
+          background: "#1A1A1A",
+          borderBottom: "none",
+          padding: "10px 20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between"
+        }}>
+          <img src="/logo.png" alt="Азбука Музыки"
+               style={{height: 44, objectFit: "contain"}}/>
+          {warnCount > 0 && (
+            <div style={{background: "#C94A2A", color: "#fff",
+              borderRadius: 20, padding: "4px 12px",
+              fontSize: 12, fontWeight: 700}}>⚠ {warnCount}</div>
           )}
         </div>
       )}
