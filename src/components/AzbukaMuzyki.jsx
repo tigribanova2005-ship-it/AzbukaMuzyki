@@ -33,12 +33,14 @@ const TC = {
 const teacherColor = (id) => TC[id] || TC[1];
 
 const SUB_TYPES = [
-  { key:"ind_4",      label:"4 занятия (индивидуально)", lessons:4, price:7000 },
-  { key:"ind_8",      label:"8 занятий (индивидуально)", lessons:8, price:12800 },
-  { key:"ensemble_4", label:"4 занятия (ансамбль)",      lessons:4, price:3500 },
-  { key:"tandem_4",   label:"4 занятия (тандем)",        lessons:4, price:11500 },
+  { key:"trial",      label:"Пробное занятие",           lessons:1, price:1000 },
+  { key:"single",     label:"Разовое занятие",            lessons:1, price:2100 },
+  { key:"ind_4",      label:"4 занятия (индивидуально)",  lessons:4, price:7000 },
+  { key:"ind_8",      label:"8 занятий (индивидуально)",  lessons:8, price:12800 },
+  { key:"ensemble_4", label:"4 занятия (ансамбль)",       lessons:4, price:3500 },
+  { key:"tandem_4",   label:"4 занятия (тандем)",         lessons:4, price:11500 },
 ];
-const DIRECTIONS   = ["Вокал","Фортепиано","Барабаны"];
+const DIRECTIONS   = ["Вокал", "Фортепиано", "Барабаны", "Гитара", "Скрипка"];
 const MESSENGERS   = ["Telegram","VK/Макс","SMS"];
 const EXPENSE_CATS = ["Аренда","Налоги","Уборка","Реклама","Оборудование","Прочее"];
 const ROLE_OPTIONS = [
