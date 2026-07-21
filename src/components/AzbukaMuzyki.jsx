@@ -41,6 +41,12 @@ const SUB_TYPES = [
 const DIRECTIONS   = ["Вокал","Фортепиано","Барабаны"];
 const MESSENGERS   = ["Telegram","VK/Макс","SMS"];
 const EXPENSE_CATS = ["Аренда","Налоги","Уборка","Реклама","Оборудование","Прочее"];
+const ROLE_OPTIONS = [
+  {value:"admin",   label:"Администратор"},
+  {value:"active",  label:"Активный"},
+  {value:"passive", label:"Пассивный"},
+];
+const ROLE_LABELS = {admin:"Администратор", active:"Активный", passive:"Пассивный"};
 const TEACHER_RATE = 800;
 const WEEK_DAYS    = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 const MONTH_NAMES  = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
@@ -154,6 +160,7 @@ const IC = {
   repeat: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>,
   chevL:  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
   chevR:  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
+  teacher:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>,
 };
 
 const Card = ({children,style,onClick}) => (
@@ -415,7 +422,45 @@ function StudentsScreen({students,subs,onSelect,onAdd}) {
   );
 }
 
-function StudentDetail({student,subs,schedule,teachers,onBack,onAddSub,onMarkSub,onLink}) {
+function TeachersScreen({teachers,onAdd,onEdit,onDelete}) {
+  return (
+    <div style={{padding:16}}>
+      <Btn onClick={onAdd} style={{width:"100%",justifyContent:"center",marginBottom:14}}>
+        {IC.plus} Добавить педагога
+      </Btn>
+      <div style={{fontSize:11,color:T.textSub,fontWeight:700,letterSpacing:.4,
+        textTransform:"uppercase",marginBottom:8}}>Всего: {teachers.length}</div>
+      {teachers.map(t=>{
+        const tc=teacherColor(t.id);
+        return (
+          <Card key={t.id} style={{padding:"13px 14px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:40,height:40,borderRadius:20,flexShrink:0,
+                background:tc.bg,display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:16,fontWeight:800,color:tc.text}}>
+                {t.name[0]}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,fontSize:14}}>{t.name}</div>
+                <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:5}}>
+                  <Badge color="primary">{ROLE_LABELS[t.role]||t.role}</Badge>
+                  {t.directions.map(d=><Badge key={d} color="muted">{d}</Badge>)}
+                </div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:6,marginTop:10}}>
+              <Btn small variant="ghost" onClick={()=>onEdit(t)}>Редактировать</Btn>
+              <Btn small variant="danger" onClick={()=>onDelete(t.id)}>Удалить</Btn>
+            </div>
+          </Card>
+        );
+      })}
+      {teachers.length===0&&<div style={{textAlign:"center",color:T.textSub,marginTop:40}}>Педагогов нет</div>}
+    </div>
+  );
+}
+
+function StudentDetail({student,subs,schedule,teachers,onBack,onAddSub,onMarkSub,onLink,onEdit,onDelete,onDeleteSub}) {
   const [tab,setTab]=useState("subs");
   if(!student) return null;
   const activeSubs=subs.filter(s=>s.status==="active");
@@ -508,9 +553,12 @@ function StudentDetail({student,subs,schedule,teachers,onBack,onAddSub,onMarkSub
                     <div style={{fontWeight:600}}>{sub.direction} · {sub.typeLabel}</div>
                     <div style={{fontSize:11,color:T.textSub}}>{fmtDate(sub.purchaseDate)} — {fmtDate(sub.expiryDate)}</div>
                   </div>
-                  <div style={{textAlign:"right"}}>
-                    <Badge color="muted">Завершён</Badge>
-                    <div style={{fontSize:11,color:T.textSub,marginTop:3}}>{fmtMoney(sub.price)}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{textAlign:"right"}}>
+                      <Badge color="muted">Завершён</Badge>
+                      <div style={{fontSize:11,color:T.textSub,marginTop:3}}>{fmtMoney(sub.price)}</div>
+                    </div>
+                    <Btn small variant="ghost" onClick={()=>onDeleteSub(sub.id)} style={{padding:"4px 8px"}}>{IC.close}</Btn>
                   </div>
                 </div>
               ))}
@@ -540,22 +588,29 @@ function StudentDetail({student,subs,schedule,teachers,onBack,onAddSub,onMarkSub
           </div>
         )}
         {tab==="info"&&(
-          <Card>
-            <div style={{fontSize:11,fontWeight:700,color:T.textSub,marginBottom:12,letterSpacing:.5,textTransform:"uppercase"}}>Контактная информация</div>
-            {[
-              {label:"Телефон",val:student.phone},
-              {label:"Мессенджер",val:`${messengerEmoji(student.messenger)} ${student.messenger}`},
-              {label:"Контакт",val:student.messengerContact},
-              ...(student.isMinor?[{label:"Родитель",val:student.parentName},{label:"Тел. родит.",val:student.parentPhone}]:[]),
-              {label:"Направления",val:student.directions?.join(", ")||"—"},
-            ].map(row=>(
-              <div key={row.label} style={{display:"flex",justifyContent:"space-between",
-                padding:"8px 0",borderBottom:`1px solid ${T.border}`,fontSize:13}}>
-                <span style={{color:T.textSub,fontWeight:500}}>{row.label}</span>
-                <span style={{fontWeight:600,textAlign:"right",maxWidth:"60%"}}>{row.val||"—"}</span>
-              </div>
-            ))}
-          </Card>
+          <>
+            <Card>
+              <div style={{fontSize:11,fontWeight:700,color:T.textSub,marginBottom:12,letterSpacing:.5,textTransform:"uppercase"}}>Контактная информация</div>
+              {[
+                {label:"Телефон",val:student.phone},
+                {label:"Мессенджер",val:`${messengerEmoji(student.messenger)} ${student.messenger}`},
+                {label:"Контакт",val:student.messengerContact},
+                ...(student.isMinor?[{label:"Родитель",val:student.parentName},{label:"Тел. родит.",val:student.parentPhone}]:[]),
+                {label:"Направления",val:student.directions?.join(", ")||"—"},
+              ].map(row=>(
+                <div key={row.label} style={{display:"flex",justifyContent:"space-between",
+                  padding:"8px 0",borderBottom:`1px solid ${T.border}`,fontSize:13}}>
+                  <span style={{color:T.textSub,fontWeight:500}}>{row.label}</span>
+                  <span style={{fontWeight:600,textAlign:"right",maxWidth:"60%"}}>{row.val||"—"}</span>
+                </div>
+              ))}
+            </Card>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              <Btn variant="ghost" onClick={onEdit} style={{justifyContent:"center"}}>Редактировать</Btn>
+              <Btn variant="danger" onClick={()=>{if(confirm("Удалить ученика и все его данные?"))onDelete();}}
+                style={{justifyContent:"center"}}>Удалить ученика</Btn>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -627,17 +682,18 @@ function CalendarScreen({students,subs,schedule,teachers,onMark,onLink,onAddLess
   );
 }
 
-function FinancesScreen({subs,schedule,expenses,onAddExpense}) {
+function FinancesScreen({subs,schedule,expenses,onAddExpense,onDeleteExpense}) {
   const monthLabel=today.toLocaleDateString("ru-RU",{month:"long",year:"numeric"});
   const monthSubs=subs.filter(s=>{const d=new Date(s.purchaseDate);return d.getMonth()===m&&d.getFullYear()===y;});
   const income=monthSubs.reduce((a,s)=>a+s.price,0);
   const monthExp=expenses.filter(e=>{const d=new Date(e.date);return d.getMonth()===m&&d.getFullYear()===y;});
-  const totalExp=monthExp.reduce((a,e)=>a+e.amount,0);
+  const expTotal=monthExp.reduce((a,e)=>a+e.amount,0);
   const lessonsCount=schedule.filter(l=>{
     const d=new Date(l.date);return l.status==="attended"&&d.getMonth()===m&&d.getFullYear()===y;
   }).length;
   const payroll=lessonsCount*TEACHER_RATE;
-  const profit=income-totalExp-payroll;
+  const totalExp=expTotal+payroll;
+  const profit=income-totalExp;
   return (
     <div style={{padding:16}}>
       <div style={{fontWeight:800,fontSize:16,marginBottom:14,textTransform:"capitalize"}}>📅 {monthLabel}</div>
@@ -689,16 +745,26 @@ function FinancesScreen({subs,schedule,expenses,onAddExpense}) {
           <div style={{fontWeight:700,fontSize:13}}>📊 Расходы</div>
           <Btn small variant="ghost" onClick={onAddExpense}>{IC.plus} Добавить</Btn>
         </div>
-        {monthExp.length===0&&<div style={{color:T.textSub,fontSize:13}}>Нет расходов</div>}
+        {monthExp.length===0&&payroll===0&&<div style={{color:T.textSub,fontSize:13}}>Нет расходов</div>}
         {monthExp.map(e=>(
-          <div key={e.id} style={{display:"flex",justifyContent:"space-between",
+          <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
             padding:"7px 0",borderBottom:`1px solid ${T.border}`,fontSize:13}}>
             <div><div style={{fontWeight:600}}>{e.category}</div>
               {e.comment&&<div style={{fontSize:11,color:T.textSub}}>{e.comment}</div>}</div>
-            <span style={{fontWeight:700,color:T.danger}}>−{fmtMoney(e.amount)}</span>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontWeight:700,color:T.danger}}>−{fmtMoney(e.amount)}</span>
+              <Btn small variant="ghost" onClick={()=>onDeleteExpense(e.id)} style={{padding:"4px 8px"}}>{IC.close}</Btn>
+            </div>
           </div>
         ))}
-        {monthExp.length>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13,
+        {payroll>0&&(
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+            padding:"7px 0",borderBottom:`1px solid ${T.border}`,fontSize:13}}>
+            <div style={{fontWeight:600}}>Зарплата педагогов (зарплата)</div>
+            <span style={{fontWeight:700,color:T.danger}}>−{fmtMoney(payroll)}</span>
+          </div>
+        )}
+        {(monthExp.length>0||payroll>0)&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13,
           padding:"8px 0",fontWeight:700}}>
           <span>Итого</span><span style={{color:T.danger}}>{fmtMoney(totalExp)}</span></div>}
       </Card>
@@ -715,6 +781,48 @@ function AddStudentModal({onClose,onSave}) {
     <Modal title="Новый ученик" onClose={onClose}
       onSave={()=>{if(!f.fullName.trim()||!f.phone.trim()){alert("Заполните ФИО и телефон");return;}onSave(f);}}
       saveLabel="Добавить ученика">
+      <SInput label="ФИО *" value={f.fullName} onChange={v=>s("fullName",v)} placeholder="Фамилия Имя Отчество" required/>
+      <SInput label="Дата рождения" value={f.birthDate} onChange={v=>s("birthDate",v)} type="date"/>
+      <div style={{marginBottom:14}}>
+        <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
+          <input type="checkbox" checked={f.isMinor} onChange={e=>s("isMinor",e.target.checked)}
+            style={{width:16,height:16,accentColor:T.accent}}/>
+          Ребёнок до 13 лет — нужны данные родителя
+        </label>
+      </div>
+      {f.isMinor&&<><SInput label="ФИО родителя *" value={f.parentName} onChange={v=>s("parentName",v)}/>
+        <SInput label="Телефон родителя *" value={f.parentPhone} onChange={v=>s("parentPhone",v)} type="tel"/></>}
+      <SInput label="Телефон *" value={f.phone} onChange={v=>s("phone",v)} type="tel" placeholder="+7 XXX XXX-XX-XX" required/>
+      <SSelect label="Мессенджер" value={f.messenger} onChange={v=>s("messenger",v)} options={MESSENGERS.map(x=>({value:x,label:x}))}/>
+      <SInput label="Контакт в мессенджере" value={f.messengerContact} onChange={v=>s("messengerContact",v)} placeholder="@username или номер"/>
+      <div>
+        <label style={{display:"block",fontSize:11,fontWeight:700,color:T.textSub,
+          marginBottom:8,textTransform:"uppercase",letterSpacing:.7}}>Направления</label>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {DIRECTIONS.map(d=>(
+            <button key={d} onClick={()=>td(d)} style={{
+              border:`2px solid ${f.directions.includes(d)?T.accent:T.border}`,
+              borderRadius:20,padding:"6px 14px",fontSize:13,fontWeight:600,cursor:"pointer",
+              background:f.directions.includes(d)?T.accentLight:"transparent",
+              color:f.directions.includes(d)?T.accent:T.textSub}}>{d}</button>
+          ))}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function EditStudentModal({student,onClose,onSave}) {
+  const [f,setF]=useState({fullName:student.fullName,birthDate:student.birthDate,isMinor:student.isMinor,
+    parentName:student.parentName,parentPhone:student.parentPhone,
+    phone:student.phone,messenger:student.messenger,messengerContact:student.messengerContact,
+    directions:student.directions||[]});
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  const td=(d)=>s("directions",f.directions.includes(d)?f.directions.filter(x=>x!==d):[...f.directions,d]);
+  return (
+    <Modal title="Редактировать ученика" onClose={onClose}
+      onSave={()=>{if(!f.fullName.trim()||!f.phone.trim()){alert("Заполните ФИО и телефон");return;}onSave(f);}}
+      saveLabel="Сохранить изменения">
       <SInput label="ФИО *" value={f.fullName} onChange={v=>s("fullName",v)} placeholder="Фамилия Имя Отчество" required/>
       <SInput label="Дата рождения" value={f.birthDate} onChange={v=>s("birthDate",v)} type="date"/>
       <div style={{marginBottom:14}}>
@@ -817,6 +925,33 @@ function AddExpenseModal({onClose,onSave}) {
   );
 }
 
+function TeacherModal({teacher,onClose,onSave}) {
+  const [f,setF]=useState({name:teacher?.name||"",role:teacher?.role||"active",directions:teacher?.directions||[]});
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  const td=(d)=>s("directions",f.directions.includes(d)?f.directions.filter(x=>x!==d):[...f.directions,d]);
+  return (
+    <Modal title={teacher?"Редактировать педагога":"Новый педагог"} onClose={onClose}
+      onSave={()=>{if(!f.name.trim()){alert("Укажите имя");return;}onSave(f);}}
+      saveLabel={teacher?"Сохранить изменения":"Добавить педагога"}>
+      <SInput label="Имя *" value={f.name} onChange={v=>s("name",v)} placeholder="Имя педагога" required/>
+      <SSelect label="Роль" value={f.role} onChange={v=>s("role",v)} options={ROLE_OPTIONS}/>
+      <div>
+        <label style={{display:"block",fontSize:11,fontWeight:700,color:T.textSub,
+          marginBottom:8,textTransform:"uppercase",letterSpacing:.7}}>Направления</label>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {DIRECTIONS.map(d=>(
+            <button key={d} onClick={()=>td(d)} style={{
+              border:`2px solid ${f.directions.includes(d)?T.accent:T.border}`,
+              borderRadius:20,padding:"6px 14px",fontSize:13,fontWeight:600,cursor:"pointer",
+              background:f.directions.includes(d)?T.accentLight:"transparent",
+              color:f.directions.includes(d)?T.accent:T.textSub}}>{d}</button>
+          ))}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function LinkModal({lessonId,contactName,messenger,onClose,onSend}) {
   const [link,setLink]=useState("");
   return (
@@ -836,14 +971,15 @@ function LinkModal({lessonId,contactName,messenger,onClose,onSend}) {
 
 export default function App() {
   const [tab,setTab]           = useState("today");
-  const [teachers]             = useState(INIT_TEACHERS);
+  const [teachers,setTeachers] = useState(INIT_TEACHERS);
   const [students,setStudents] = useState(INIT_STUDENTS);
   const [subs,setSubs]         = useState(INIT_SUBS);
   const [schedule,setSchedule] = useState(INIT_SCHEDULE);
   const [expenses,setExpenses] = useState(INIT_EXPENSES);
   const [selStudentId,setSelStudentId] = useState(null);
-  const [modals,setModals]     = useState({addStudent:false,addSub:false,addLesson:false,addExpense:false});
+  const [modals,setModals]     = useState({addStudent:false,editStudent:false,addSub:false,addLesson:false,addExpense:false});
   const [linkModal,setLinkModal] = useState(null);
+  const [teacherModal,setTeacherModal] = useState(null);
 
   const showModal=(k)=>setModals(p=>({...p,[k]:true}));
   const hideModal=(k)=>setModals(p=>({...p,[k]:false}));
@@ -852,6 +988,18 @@ export default function App() {
   const selSchedule = selStudentId ? schedule.filter(l=>l.studentId===selStudentId) : [];
 
   const addStudent = (data) => { const id=Math.max(0,...students.map(s=>s.id))+1; setStudents(p=>[...p,{id,...data}]); };
+  const updateStudent = (id,data) => setStudents(p=>p.map(s=>s.id===id?{...s,...data}:s));
+  const deleteStudent = (id) => {
+    setStudents(p=>p.filter(s=>s.id!==id));
+    setSubs(p=>p.filter(s=>s.studentId!==id));
+    setSchedule(p=>p.filter(l=>l.studentId!==id));
+    setSelStudentId(null);
+  };
+  const deleteSub = (id) => setSubs(p=>p.filter(s=>s.id!==id));
+  const deleteExpense = (id) => setExpenses(p=>p.filter(e=>e.id!==id));
+  const addTeacher = (data) => { const id=Math.max(0,...teachers.map(t=>t.id),0)+1; setTeachers(p=>[...p,{id,...data}]); };
+  const updateTeacher = (id,data) => setTeachers(p=>p.map(t=>t.id===id?{...t,...data}:t));
+  const deleteTeacher = (id) => setTeachers(p=>p.filter(t=>t.id!==id));
   const addSub = (data) => {
     const type=SUB_TYPES.find(t=>t.key===data.typeKey);
     const id=Math.max(0,...subs.map(s=>s.id),0)+1;
@@ -891,6 +1039,7 @@ export default function App() {
     {key:"students",label:"Ученики",    icon:IC.users},
     {key:"calendar",label:"Расписание", icon:IC.cal},
     {key:"finances",label:"Финансы",    icon:IC.money},
+    {key:"teachers",label:"Педагоги",   icon:IC.teacher},
   ];
   const warnCount=subs.filter(s=>s.status==="active"&&s.lessonsLeft<=1).length;
 
@@ -922,7 +1071,8 @@ export default function App() {
       {selStudentId ? (
         <StudentDetail student={selStudent} subs={selSubs} schedule={selSchedule}
           teachers={teachers} onBack={()=>setSelStudentId(null)}
-          onAddSub={()=>showModal("addSub")} onMarkSub={markSubLesson} onLink={openLink}/>
+          onAddSub={()=>showModal("addSub")} onMarkSub={markSubLesson} onLink={openLink}
+          onEdit={()=>showModal("editStudent")} onDelete={()=>deleteStudent(selStudentId)} onDeleteSub={deleteSub}/>
       ) : tab==="today" ? (
         <TodayScreen students={students} subs={subs} schedule={schedule} expenses={expenses}
           teachers={teachers} onMark={markLesson} onLink={openLink} onSelectStudent={setSelStudentId}/>
@@ -931,8 +1081,14 @@ export default function App() {
       ) : tab==="calendar" ? (
         <CalendarScreen students={students} subs={subs} schedule={schedule} teachers={teachers}
           onMark={markLesson} onLink={openLink} onAddLesson={()=>showModal("addLesson")}/>
+      ) : tab==="finances" ? (
+        <FinancesScreen subs={subs} schedule={schedule} expenses={expenses}
+          onAddExpense={()=>showModal("addExpense")} onDeleteExpense={deleteExpense}/>
       ) : (
-        <FinancesScreen subs={subs} schedule={schedule} expenses={expenses} onAddExpense={()=>showModal("addExpense")}/>
+        <TeachersScreen teachers={teachers}
+          onAdd={()=>setTeacherModal({mode:"add"})}
+          onEdit={(t)=>setTeacherModal({mode:"edit",teacher:t})}
+          onDelete={deleteTeacher}/>
       )}
 
       {!selStudentId&&(
@@ -953,10 +1109,13 @@ export default function App() {
       )}
 
       {modals.addStudent&&<AddStudentModal onClose={()=>hideModal("addStudent")} onSave={d=>{addStudent(d);hideModal("addStudent");}}/>}
+      {modals.editStudent&&selStudentId&&<EditStudentModal student={selStudent} onClose={()=>hideModal("editStudent")} onSave={d=>{updateStudent(selStudentId,d);hideModal("editStudent");}}/>}
       {modals.addSub&&selStudentId&&<AddSubModal student={selStudent} onClose={()=>hideModal("addSub")} onSave={d=>{addSub(d);hideModal("addSub");}}/>}
       {modals.addLesson&&<AddLessonModal students={students} teachers={teachers} subs={subs} onClose={()=>hideModal("addLesson")} onSave={d=>{addLesson(d);hideModal("addLesson");}}/>}
       {modals.addExpense&&<AddExpenseModal onClose={()=>hideModal("addExpense")} onSave={d=>{addExpense(d);hideModal("addExpense");}}/>}
       {linkModal&&<LinkModal {...linkModal} onClose={()=>setLinkModal(null)} onSend={sendLink}/>}
+      {teacherModal&&<TeacherModal teacher={teacherModal.teacher} onClose={()=>setTeacherModal(null)}
+        onSave={d=>{teacherModal.mode==="edit"?updateTeacher(teacherModal.teacher.id,d):addTeacher(d);setTeacherModal(null);}}/>}
     </div>
   );
 }
