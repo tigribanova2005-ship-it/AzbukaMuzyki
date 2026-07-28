@@ -46,10 +46,9 @@ const MESSENGERS   = ["Telegram","VK/Макс","SMS"];
 const EXPENSE_CATS = ["Аренда","Налоги","Уборка","Реклама","Оборудование","Прочее"];
 const ROLE_OPTIONS = [
   {value:"admin",   label:"Администратор"},
-  {value:"active",  label:"Активный"},
-  {value:"passive", label:"Пассивный"},
+  {value:"teacher", label:"Педагог"},
 ];
-const ROLE_LABELS = {admin:"Администратор", active:"Активный", passive:"Пассивный"};
+const ROLE_LABELS = {admin:"Администратор", teacher:"Педагог"};
 const TEACHER_RATE = 800;
 const WEEK_DAYS    = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 const MONTH_NAMES  = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
@@ -88,7 +87,7 @@ const getWeekStart = (date) => {
 const m = today.getMonth(), y = today.getFullYear();
 
 // ─── Supabase: конвертация между camelCase (в приложении) и snake_case (в БД) ─
-const rowToTeacher = (r) => ({ id:r.id, name:r.name, role:r.role, directions:r.directions||[] });
+const rowToTeacher = (r) => ({ id:r.id, name:r.name, role:r.role, directions:r.directions||[], email:r.email||"", authUserId:r.auth_user_id||null });
 const teacherToRow = (t) => ({ name:t.name, role:t.role, directions:t.directions||[] });
 
 const rowToStudent = (r) => ({
@@ -407,12 +406,12 @@ function StudentsScreen({students,subs,onSelect,onAdd}) {
   );
 }
 
-function TeachersScreen({teachers,onAdd,onEdit,onDelete}) {
+function TeachersScreen({teachers,isAdmin,onAdd,onEdit,onDelete}) {
   return (
     <div style={{padding:16}}>
-      <Btn onClick={onAdd} style={{width:"100%",justifyContent:"center",marginBottom:14}}>
+      {isAdmin&&<Btn onClick={onAdd} style={{width:"100%",justifyContent:"center",marginBottom:14}}>
         {IC.plus} Добавить педагога
-      </Btn>
+      </Btn>}
       <div style={{fontSize:11,color:T.textSub,fontWeight:700,letterSpacing:.4,
         textTransform:"uppercase",marginBottom:8}}>Всего: {teachers.length}</div>
       {teachers.map(t=>{
@@ -433,10 +432,10 @@ function TeachersScreen({teachers,onAdd,onEdit,onDelete}) {
                 </div>
               </div>
             </div>
-            <div style={{display:"flex",gap:6,marginTop:10}}>
+            {isAdmin&&<div style={{display:"flex",gap:6,marginTop:10}}>
               <Btn small variant="ghost" onClick={()=>onEdit(t)}>Редактировать</Btn>
               <Btn small variant="danger" onClick={()=>onDelete(t.id)}>Удалить</Btn>
-            </div>
+            </div>}
           </Card>
         );
       })}
@@ -911,14 +910,19 @@ function AddExpenseModal({onClose,onSave}) {
 }
 
 function TeacherModal({teacher,onClose,onSave}) {
-  const [f,setF]=useState({name:teacher?.name||"",role:teacher?.role||"active",directions:teacher?.directions||[]});
+  const [f,setF]=useState({name:teacher?.name||"",email:teacher?.email||"",role:teacher?.role||"teacher",directions:teacher?.directions||[]});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const td=(d)=>s("directions",f.directions.includes(d)?f.directions.filter(x=>x!==d):[...f.directions,d]);
   return (
     <Modal title={teacher?"Редактировать педагога":"Новый педагог"} onClose={onClose}
-      onSave={()=>{if(!f.name.trim()){alert("Укажите имя");return;}onSave(f);}}
+      onSave={()=>{
+        if(!f.name.trim()){alert("Укажите имя");return;}
+        if(!teacher&&!f.email.trim()){alert("Укажите email");return;}
+        onSave(f);
+      }}
       saveLabel={teacher?"Сохранить изменения":"Добавить педагога"}>
       <SInput label="Имя *" value={f.name} onChange={v=>s("name",v)} placeholder="Имя педагога" required/>
+      {!teacher&&<SInput label="Email *" value={f.email} onChange={v=>s("email",v)} type="email" placeholder="teacher@example.com" required/>}
       <SSelect label="Роль" value={f.role} onChange={v=>s("role",v)} options={ROLE_OPTIONS}/>
       <div>
         <label style={{display:"block",fontSize:11,fontWeight:700,color:T.textSub,
@@ -954,6 +958,29 @@ function LinkModal({lessonId,contactName,messenger,onClose,onSend}) {
   );
 }
 
+function LoginScreen({onLogin,error,loading}) {
+  const [email,setEmail]=useState("");
+  const [password,setPassword]=useState("");
+  return (
+    <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",
+      justifyContent:"center",padding:20,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}}>
+      <form onSubmit={e=>{e.preventDefault();onLogin(email,password);}}
+        style={{width:"100%",maxWidth:340,background:T.surface,borderRadius:16,padding:24,
+          boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+        <div style={{fontWeight:800,fontSize:18,marginBottom:18,textAlign:"center"}}>Азбука Музыки</div>
+        <SInput label="Email" value={email} onChange={setEmail} type="email" placeholder="you@example.com" required/>
+        <SInput label="Пароль" value={password} onChange={setPassword} type="password" placeholder="Пароль" required/>
+        {error&&<div style={{background:T.dangerBg,color:T.danger,borderRadius:9,padding:"10px 12px",
+          fontSize:13,marginBottom:13}}>{error}</div>}
+        <Btn disabled={loading} style={{width:"100%",justifyContent:"center"}}
+          onClick={e=>{e.preventDefault();onLogin(email,password);}}>
+          {loading?"Входим…":"Войти"}
+        </Btn>
+      </form>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab,setTab]           = useState("today");
   const [teachers,setTeachers] = useState([]);
@@ -963,12 +990,55 @@ export default function App() {
   const [expenses,setExpenses] = useState([]);
   const [loading,setLoading]   = useState(true);
   const [loadError,setLoadError] = useState("");
+  const [session,setSession]   = useState(null);
+  const [me,setMe]             = useState(null);
+  const [authLoading,setAuthLoading] = useState(true);
+  const [authError,setAuthError]     = useState("");
   const [selStudentId,setSelStudentId] = useState(null);
   const [modals,setModals]     = useState({addStudent:false,editStudent:false,addSub:false,addLesson:false,addExpense:false});
   const [linkModal,setLinkModal] = useState(null);
   const [teacherModal,setTeacherModal] = useState(null);
 
+  const resolveMe = async (sess) => {
+    if (!sess) { setMe(null); return; }
+    const { data } = await supabase.from("teachers").select("*").eq("auth_user_id", sess.user.id).single();
+    if (!data) {
+      setAuthError("Аккаунт не привязан к профилю преподавателя. Обратитесь к администратору.");
+      await supabase.auth.signOut();
+      setMe(null);
+      return;
+    }
+    setMe(rowToTeacher(data));
+  };
+
   useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(async ({ data:{ session:sess } }) => {
+      if (cancelled) return;
+      setSession(sess);
+      await resolveMe(sess);
+      if (!cancelled) setAuthLoading(false);
+    });
+    const { data:sub } = supabase.auth.onAuthStateChange(async (_event, sess) => {
+      if (cancelled) return;
+      setSession(sess);
+      await resolveMe(sess);
+      setAuthLoading(false);
+    });
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
+
+  const [loggingIn,setLoggingIn] = useState(false);
+  const handleLogin = async (email,password) => {
+    setLoggingIn(true); setAuthError("");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setAuthError("Неверный email или пароль");
+    setLoggingIn(false);
+  };
+  const handleLogout = async () => { await supabase.auth.signOut(); };
+
+  useEffect(() => {
+    if (!me) return;
     let cancelled = false;
     (async () => {
       const [t,st,su,sc,ex] = await Promise.all([
@@ -989,7 +1059,8 @@ export default function App() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.id]);
 
   const showModal=(k)=>setModals(p=>({...p,[k]:true}));
   const hideModal=(k)=>setModals(p=>({...p,[k]:false}));
@@ -1032,9 +1103,15 @@ export default function App() {
     setExpenses(p=>p.filter(e=>e.id!==id));
   };
   const addTeacher = async (data) => {
-    const { data:row, error } = await supabase.from("teachers").insert(teacherToRow(data)).select().single();
-    if (error) return dbFail(error);
-    setTeachers(p=>[...p, rowToTeacher(row)]);
+    const res = await fetch("/.netlify/functions/create-teacher", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ name:data.name, email:data.email, role:data.role, directions:data.directions }),
+    });
+    const body = await res.json().catch(()=>({}));
+    if (!res.ok) { alert("Не удалось создать педагога: "+(body.error||res.statusText)); return; }
+    setTeachers(p=>[...p, rowToTeacher(body.teacher)]);
+    alert(`Педагог добавлен.\nEmail: ${body.teacher.email}\nВременный пароль: ${body.tempPassword}\n\nПередайте эти данные педагогу — пароль показывается только один раз.`);
   };
   const updateTeacher = async (id,data) => {
     const { error } = await supabase.from("teachers").update(teacherToRow(data)).eq("id", id);
@@ -1107,15 +1184,27 @@ export default function App() {
     setExpenses(p=>[...p, rowToExpense(row)]);
   };
 
+  const isAdmin = me?.role==="admin";
   const tabCfg=[
     {key:"today",   label:"Сегодня",    icon:IC.today},
     {key:"students",label:"Ученики",    icon:IC.users},
     {key:"calendar",label:"Расписание", icon:IC.cal},
-    {key:"finances",label:"Финансы",    icon:IC.money},
+    ...(isAdmin?[{key:"finances",label:"Финансы", icon:IC.money}]:[]),
     {key:"teachers",label:"Педагоги",   icon:IC.teacher},
   ];
   const warnCount=subs.filter(s=>s.status==="active"&&s.lessonsLeft<=1).length;
 
+  if (authLoading) {
+    return (
+      <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",
+        justifyContent:"center",color:T.textSub,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}}>
+        Загрузка…
+      </div>
+    );
+  }
+  if (!session||!me) {
+    return <LoginScreen onLogin={handleLogin} error={authError} loading={loggingIn}/>;
+  }
   if (loading) {
     return (
       <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",
@@ -1151,11 +1240,17 @@ export default function App() {
         }}>
           <img src="/logo.png" alt="Азбука Музыки"
                style={{height: 44, objectFit: "contain"}}/>
-          {warnCount > 0 && (
-            <div style={{background: "#C94A2A", color: "#fff",
-              borderRadius: 20, padding: "4px 12px",
-              fontSize: 12, fontWeight: 700}}>⚠ {warnCount}</div>
-          )}
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {warnCount > 0 && (
+              <div style={{background: "#C94A2A", color: "#fff",
+                borderRadius: 20, padding: "4px 12px",
+                fontSize: 12, fontWeight: 700}}>⚠ {warnCount}</div>
+            )}
+            <button onClick={handleLogout} style={{border:"none",background:"rgba(255,255,255,.12)",
+              color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+              Выйти
+            </button>
+          </div>
         </div>
       )}
 
@@ -1172,11 +1267,11 @@ export default function App() {
       ) : tab==="calendar" ? (
         <CalendarScreen students={students} subs={subs} schedule={schedule} teachers={teachers}
           onMark={markLesson} onLink={openLink} onAddLesson={()=>showModal("addLesson")}/>
-      ) : tab==="finances" ? (
+      ) : tab==="finances"&&isAdmin ? (
         <FinancesScreen subs={subs} schedule={schedule} expenses={expenses}
           onAddExpense={()=>showModal("addExpense")} onDeleteExpense={deleteExpense}/>
       ) : (
-        <TeachersScreen teachers={teachers}
+        <TeachersScreen teachers={teachers} isAdmin={isAdmin}
           onAdd={()=>setTeacherModal({mode:"add"})}
           onEdit={(t)=>setTeacherModal({mode:"edit",teacher:t})}
           onDelete={deleteTeacher}/>
