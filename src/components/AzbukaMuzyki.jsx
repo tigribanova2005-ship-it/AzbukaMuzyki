@@ -985,6 +985,63 @@ function LoginScreen({onLogin,error,loading}) {
   );
 }
 
+function CopyField({label,value}) {
+  const [copied,setCopied]=useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(value); setCopied(true); setTimeout(()=>setCopied(false),1500); }
+    catch { /* clipboard unavailable — user can still select the field and copy manually */ }
+  };
+  return (
+    <div style={{marginBottom:13}}>
+      <label style={{display:"block",fontSize:11,fontWeight:700,color:T.textSub,
+        marginBottom:5,textTransform:"uppercase",letterSpacing:.7}}>{label}</label>
+      <div style={{display:"flex",gap:6}}>
+        <input readOnly value={value} onFocus={e=>e.target.select()} style={{flex:1,minWidth:0,
+          boxSizing:"border-box",border:`1.5px solid ${T.border}`,borderRadius:9,padding:"10px 12px",
+          fontSize:14,color:T.textMain,background:T.muted,outline:"none",fontFamily:"monospace"}}/>
+        <Btn small variant="ghost" onClick={copy}>{copied?"Скопировано":"Копировать"}</Btn>
+      </div>
+    </div>
+  );
+}
+
+function TempPasswordModal({email,password,onClose}) {
+  return (
+    <Modal title="Педагог добавлен" onClose={onClose} onSave={onClose} saveLabel="Готово">
+      <div style={{background:T.warningBg,color:T.warning,borderRadius:9,padding:"10px 12px",
+        fontSize:12,fontWeight:600,marginBottom:14}}>
+        {IC.warn} Пароль показывается только один раз — передайте его педагогу сейчас.
+      </div>
+      <CopyField label="Email" value={email}/>
+      <CopyField label="Временный пароль" value={password}/>
+    </Modal>
+  );
+}
+
+function ChangePasswordModal({onClose}) {
+  const [pw1,setPw1]=useState("");
+  const [pw2,setPw2]=useState("");
+  const [err,setErr]=useState("");
+  const [busy,setBusy]=useState(false);
+  const submit = async () => {
+    setErr("");
+    if (pw1.length<6) { setErr("Пароль должен быть не короче 6 символов"); return; }
+    if (pw1!==pw2) { setErr("Пароли не совпадают"); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: pw1 });
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    onClose();
+  };
+  return (
+    <Modal title="Сменить пароль" onClose={onClose} onSave={submit} saveLabel={busy?"Сохраняем…":"Сохранить"}>
+      <SInput label="Новый пароль" type="password" value={pw1} onChange={setPw1} placeholder="Минимум 6 символов" required/>
+      <SInput label="Повторите пароль" type="password" value={pw2} onChange={setPw2} placeholder="Ещё раз" required/>
+      {err&&<div style={{background:T.dangerBg,color:T.danger,borderRadius:9,padding:"10px 12px",fontSize:13}}>{err}</div>}
+    </Modal>
+  );
+}
+
 export default function App() {
   const [tab,setTab]           = useState("today");
   const [teachers,setTeachers] = useState([]);
@@ -1002,6 +1059,8 @@ export default function App() {
   const [modals,setModals]     = useState({addStudent:false,editStudent:false,addSub:false,addLesson:false,addExpense:false});
   const [linkModal,setLinkModal] = useState(null);
   const [teacherModal,setTeacherModal] = useState(null);
+  const [tempCred,setTempCred] = useState(null);
+  const [changePwOpen,setChangePwOpen] = useState(false);
 
   const resolveMe = async (sess) => {
     if (!sess) { setMe(null); return; }
@@ -1085,12 +1144,14 @@ export default function App() {
     setStudents(p=>p.map(s=>s.id===id?{...s,...data}:s));
   };
   const deleteStudent = async (id) => {
-    const { error } = await supabase.from("students").delete().eq("id", id);
-    if (error) return dbFail(error);
-    await Promise.all([
+    const [subsRes,schedRes] = await Promise.all([
       supabase.from("subscriptions").delete().eq("student_id", id),
       supabase.from("schedule").delete().eq("student_id", id),
     ]);
+    if (subsRes.error) return dbFail(subsRes.error);
+    if (schedRes.error) return dbFail(schedRes.error);
+    const { error } = await supabase.from("students").delete().eq("id", id);
+    if (error) return dbFail(error);
     setStudents(p=>p.filter(s=>s.id!==id));
     setSubs(p=>p.filter(s=>s.studentId!==id));
     setSchedule(p=>p.filter(l=>l.studentId!==id));
@@ -1115,7 +1176,7 @@ export default function App() {
     const body = await res.json().catch(()=>({}));
     if (!res.ok) { alert("Не удалось создать педагога: "+(body.error||res.statusText)); return; }
     setTeachers(p=>[...p, rowToTeacher(body.teacher)]);
-    alert(`Педагог добавлен.\nEmail: ${body.teacher.email}\nВременный пароль: ${body.tempPassword}\n\nПередайте эти данные педагогу — пароль показывается только один раз.`);
+    setTempCred({ email: body.teacher.email, password: body.tempPassword });
   };
   const updateTeacher = async (id,data) => {
     const { error } = await supabase.from("teachers").update(teacherToRow(data)).eq("id", id);
@@ -1250,6 +1311,10 @@ export default function App() {
                 borderRadius: 20, padding: "4px 12px",
                 fontSize: 12, fontWeight: 700}}>⚠ {warnCount}</div>
             )}
+            <button onClick={()=>setChangePwOpen(true)} style={{border:"none",background:"rgba(255,255,255,.12)",
+              color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+              Пароль
+            </button>
             <button onClick={handleLogout} style={{border:"none",background:"rgba(255,255,255,.12)",
               color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
               Выйти
@@ -1306,6 +1371,8 @@ export default function App() {
       {linkModal&&<LinkModal {...linkModal} onClose={()=>setLinkModal(null)} onSend={sendLink}/>}
       {teacherModal&&<TeacherModal teacher={teacherModal.teacher} onClose={()=>setTeacherModal(null)}
         onSave={d=>{teacherModal.mode==="edit"?updateTeacher(teacherModal.teacher.id,d):addTeacher(d);setTeacherModal(null);}}/>}
+      {tempCred&&<TempPasswordModal email={tempCred.email} password={tempCred.password} onClose={()=>setTempCred(null)}/>}
+      {changePwOpen&&<ChangePasswordModal onClose={()=>setChangePwOpen(false)}/>}
     </div>
   );
 }
