@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
 // ─── ТЕМА (бренд: чёрный + терракота + белый) ────────────────────────────────
 const T = {
@@ -45,10 +46,9 @@ const MESSENGERS   = ["Telegram","VK/Макс","SMS"];
 const EXPENSE_CATS = ["Аренда","Налоги","Уборка","Реклама","Оборудование","Прочее"];
 const ROLE_OPTIONS = [
   {value:"admin",   label:"Администратор"},
-  {value:"active",  label:"Активный"},
-  {value:"passive", label:"Пассивный"},
+  {value:"teacher", label:"Педагог"},
 ];
-const ROLE_LABELS = {admin:"Администратор", active:"Активный", passive:"Пассивный"};
+const ROLE_LABELS = {admin:"Администратор", teacher:"Педагог"};
 const TEACHER_RATE = 800;
 const WEEK_DAYS    = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 const MONTH_NAMES  = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
@@ -84,65 +84,47 @@ const getWeekStart = (date) => {
   return d;
 };
 
-const INIT_TEACHERS = [
-  { id:1, name:"Аня",            role:"admin",   directions:["Вокал"] },
-  { id:2, name:"Кристина",       role:"active",  directions:["Вокал"] },
-  { id:3, name:"Ирина Петровна", role:"active",  directions:["Фортепиано"] },
-  { id:4, name:"Дмитрий",        role:"passive", directions:["Барабаны"] },
-];
 const m = today.getMonth(), y = today.getFullYear();
-const INIT_STUDENTS = [
-  { id:1, fullName:"Иванова Мария Сергеевна",    birthDate:"2010-03-15", isMinor:true,
-    parentName:"Иванова Светлана Петровна", parentPhone:"+7 912 345-67-89",
-    phone:"+7 912 345-67-89", messenger:"SMS", messengerContact:"+7 912 345-67-89", directions:["Вокал"] },
-  { id:2, fullName:"Петров Алексей Дмитриевич",  birthDate:"1995-07-22", isMinor:false,
-    parentName:"", parentPhone:"",
-    phone:"+7 903 111-22-33", messenger:"VK/Макс", messengerContact:"vk.com/petrov", directions:["Фортепиано"] },
-  { id:3, fullName:"Сидорова Анна Владимировна", birthDate:"2008-11-05", isMinor:true,
-    parentName:"Сидоров Владимир Игоревич", parentPhone:"+7 916 777-88-99",
-    phone:"+7 916 777-88-99", messenger:"SMS", messengerContact:"+7 916 777-88-99", directions:["Вокал"] },
-];
-const INIT_SUBS = [
-  { id:1, studentId:1, direction:"Вокал",      typeKey:"ind_8", typeLabel:"8 занятий (индивидуально)",
-    price:12800, totalLessons:8, lessonsLeft:2,
-    purchaseDate:new Date(y,m,1).toISOString(), expiryDate:addMonths(new Date(y,m,1),1).toISOString(),
-    status:"active", paymentMethod:"Перевод" },
-  { id:2, studentId:2, direction:"Фортепиано", typeKey:"ind_4", typeLabel:"4 занятия (индивидуально)",
-    price:7000, totalLessons:4, lessonsLeft:4,
-    purchaseDate:new Date(y,m,10).toISOString(), expiryDate:addMonths(new Date(y,m,10),1).toISOString(),
-    status:"active", paymentMethod:"Наличные" },
-  { id:3, studentId:3, direction:"Вокал",      typeKey:"ind_4", typeLabel:"4 занятия (индивидуально)",
-    price:7000, totalLessons:4, lessonsLeft:1,
-    purchaseDate:new Date(y,m,5).toISOString(), expiryDate:addMonths(new Date(y,m,5),1).toISOString(),
-    status:"active", paymentMethod:"Перевод" },
-  { id:0, studentId:1, direction:"Вокал",      typeKey:"ind_4", typeLabel:"4 занятия (индивидуально)",
-    price:7000, totalLessons:4, lessonsLeft:0,
-    purchaseDate:addMonths(new Date(y,m,1),-1).toISOString(), expiryDate:new Date(y,m,1).toISOString(),
-    status:"expired", paymentMethod:"Перевод" },
-];
-const dt = (offset, time) => `${toDateStr(addDays(today, offset))}T${time}:00`;
-const INIT_SCHEDULE = [
-  {id:1, studentId:1,teacherId:1,subId:1,direction:"Вокал",      date:dt(-7,"10:00"), status:"attended",    accessLink:""},
-  {id:2, studentId:2,teacherId:3,subId:2,direction:"Фортепиано", date:dt(-7,"11:30"), status:"attended",    accessLink:""},
-  {id:3, studentId:3,teacherId:2,subId:3,direction:"Вокал",      date:dt(-6,"14:00"), status:"attended",    accessLink:""},
-  {id:4, studentId:1,teacherId:1,subId:1,direction:"Вокал",      date:dt(-5,"10:00"), status:"attended",    accessLink:""},
-  {id:5, studentId:2,teacherId:3,subId:2,direction:"Фортепиано", date:dt(-4,"11:30"), status:"missed",      accessLink:""},
-  {id:6, studentId:3,teacherId:2,subId:3,direction:"Вокал",      date:dt(-3,"14:00"), status:"attended",    accessLink:""},
-  {id:7, studentId:1,teacherId:1,subId:1,direction:"Вокал",      date:dt(-1,"10:00"), status:"attended",    accessLink:""},
-  {id:8, studentId:2,teacherId:3,subId:2,direction:"Фортепиано", date:dt(-1,"11:30"), status:"attended",    accessLink:""},
-  {id:9, studentId:1,teacherId:1,subId:1,direction:"Вокал",      date:dt(0,"10:00"),  status:"planned",     accessLink:""},
-  {id:10,studentId:3,teacherId:2,subId:3,direction:"Вокал",      date:dt(0,"11:00"),  status:"planned",     accessLink:""},
-  {id:11,studentId:2,teacherId:3,subId:2,direction:"Фортепиано", date:dt(0,"14:00"),  status:"planned",     accessLink:""},
-  {id:12,studentId:1,teacherId:1,subId:1,direction:"Вокал",      date:dt(1,"10:00"),  status:"planned",     accessLink:""},
-  {id:13,studentId:3,teacherId:2,subId:3,direction:"Вокал",      date:dt(2,"11:00"),  status:"planned",     accessLink:""},
-  {id:14,studentId:2,teacherId:3,subId:2,direction:"Фортепиано", date:dt(3,"11:30"),  status:"planned",     accessLink:""},
-  {id:15,studentId:1,teacherId:1,subId:1,direction:"Вокал",      date:dt(5,"10:00"),  status:"planned",     accessLink:""},
-];
-const INIT_EXPENSES = [
-  {id:1,category:"Аренда",  amount:15000,date:new Date(y,m,1).toISOString(), comment:"Аренда помещения"},
-  {id:2,category:"Уборка",  amount:3000, date:new Date(y,m,10).toISOString(),comment:""},
-  {id:3,category:"Реклама", amount:5000, date:new Date(y,m,15).toISOString(),comment:"Таргет ВК"},
-];
+
+// ─── Supabase: конвертация между camelCase (в приложении) и snake_case (в БД) ─
+const rowToTeacher = (r) => ({ id:r.id, name:r.name, role:r.role, directions:r.directions||[], email:r.email||"", authUserId:r.auth_user_id||null });
+const teacherToRow = (t) => ({ name:t.name, role:t.role, directions:t.directions||[] });
+
+const rowToStudent = (r) => ({
+  id:r.id, fullName:r.full_name, birthDate:r.birth_date||"", isMinor:!!r.is_minor,
+  parentName:r.parent_name||"", parentPhone:r.parent_phone||"",
+  phone:r.phone, messenger:r.messenger, messengerContact:r.messenger_contact||"",
+  directions:r.directions||[],
+});
+const studentToRow = (s) => ({
+  full_name:s.fullName, birth_date:s.birthDate||null, is_minor:!!s.isMinor,
+  parent_name:s.parentName||null, parent_phone:s.parentPhone||null,
+  phone:s.phone, messenger:s.messenger, messenger_contact:s.messengerContact||null,
+  directions:s.directions||[],
+});
+
+const rowToSub = (r) => ({
+  id:r.id, studentId:r.student_id, direction:r.direction, typeKey:r.type_key, typeLabel:r.type_label,
+  price:r.price, totalLessons:r.total_lessons, lessonsLeft:r.lessons_left,
+  purchaseDate:r.purchase_date, expiryDate:r.expiry_date, status:r.status, paymentMethod:r.payment_method,
+});
+const subToRow = (s) => ({
+  student_id:s.studentId, direction:s.direction, type_key:s.typeKey, type_label:s.typeLabel,
+  price:s.price, total_lessons:s.totalLessons, lessons_left:s.lessonsLeft,
+  purchase_date:s.purchaseDate, expiry_date:s.expiryDate, status:s.status, payment_method:s.paymentMethod,
+});
+
+const rowToLesson = (r) => ({
+  id:r.id, studentId:r.student_id, teacherId:r.teacher_id, subId:r.sub_id,
+  direction:r.direction, date:r.date, status:r.status, accessLink:r.access_link||"",
+});
+const lessonToRow = (l) => ({
+  student_id:l.studentId, teacher_id:l.teacherId, sub_id:l.subId,
+  direction:l.direction, date:l.date, status:l.status, access_link:l.accessLink||null,
+});
+
+const rowToExpense = (r) => ({ id:r.id, category:r.category, amount:r.amount, date:r.date, comment:r.comment||"" });
+const expenseToRow = (e) => ({ category:e.category, amount:e.amount, date:e.date, comment:e.comment||null });
 
 // ─── ЛОГОТИП (реальное изображение, base64) ───────────────────────────────────
 const LOGO_SRC = "data:image/jpeg;base64,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";
@@ -424,12 +406,12 @@ function StudentsScreen({students,subs,onSelect,onAdd}) {
   );
 }
 
-function TeachersScreen({teachers,onAdd,onEdit,onDelete}) {
+function TeachersScreen({teachers,isAdmin,onAdd,onEdit,onDelete}) {
   return (
     <div style={{padding:16}}>
-      <Btn onClick={onAdd} style={{width:"100%",justifyContent:"center",marginBottom:14}}>
+      {isAdmin&&<Btn onClick={onAdd} style={{width:"100%",justifyContent:"center",marginBottom:14}}>
         {IC.plus} Добавить педагога
-      </Btn>
+      </Btn>}
       <div style={{fontSize:11,color:T.textSub,fontWeight:700,letterSpacing:.4,
         textTransform:"uppercase",marginBottom:8}}>Всего: {teachers.length}</div>
       {teachers.map(t=>{
@@ -450,10 +432,10 @@ function TeachersScreen({teachers,onAdd,onEdit,onDelete}) {
                 </div>
               </div>
             </div>
-            <div style={{display:"flex",gap:6,marginTop:10}}>
+            {isAdmin&&<div style={{display:"flex",gap:6,marginTop:10}}>
               <Btn small variant="ghost" onClick={()=>onEdit(t)}>Редактировать</Btn>
               <Btn small variant="danger" onClick={()=>onDelete(t.id)}>Удалить</Btn>
-            </div>
+            </div>}
           </Card>
         );
       })}
@@ -928,14 +910,19 @@ function AddExpenseModal({onClose,onSave}) {
 }
 
 function TeacherModal({teacher,onClose,onSave}) {
-  const [f,setF]=useState({name:teacher?.name||"",role:teacher?.role||"active",directions:teacher?.directions||[]});
+  const [f,setF]=useState({name:teacher?.name||"",email:teacher?.email||"",role:teacher?.role||"teacher",directions:teacher?.directions||[]});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const td=(d)=>s("directions",f.directions.includes(d)?f.directions.filter(x=>x!==d):[...f.directions,d]);
   return (
     <Modal title={teacher?"Редактировать педагога":"Новый педагог"} onClose={onClose}
-      onSave={()=>{if(!f.name.trim()){alert("Укажите имя");return;}onSave(f);}}
+      onSave={()=>{
+        if(!f.name.trim()){alert("Укажите имя");return;}
+        if(!teacher&&!f.email.trim()){alert("Укажите email");return;}
+        onSave(f);
+      }}
       saveLabel={teacher?"Сохранить изменения":"Добавить педагога"}>
       <SInput label="Имя *" value={f.name} onChange={v=>s("name",v)} placeholder="Имя педагога" required/>
+      {!teacher&&<SInput label="Email *" value={f.email} onChange={v=>s("email",v)} type="email" placeholder="teacher@example.com" required/>}
       <SSelect label="Роль" value={f.role} onChange={v=>s("role",v)} options={ROLE_OPTIONS}/>
       <div>
         <label style={{display:"block",fontSize:11,fontWeight:700,color:T.textSub,
@@ -971,17 +958,109 @@ function LinkModal({lessonId,contactName,messenger,onClose,onSend}) {
   );
 }
 
+function LoginScreen({onLogin,error,loading}) {
+  const [email,setEmail]=useState("");
+  const [password,setPassword]=useState("");
+  return (
+    <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",
+      justifyContent:"center",padding:20,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}}>
+      <form onSubmit={e=>{e.preventDefault();onLogin(email,password);}}
+        style={{width:"100%",maxWidth:340,background:T.surface,borderRadius:16,padding:24,
+          boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+        <div style={{fontWeight:800,fontSize:18,marginBottom:18,textAlign:"center"}}>Азбука Музыки</div>
+        <SInput label="Email" value={email} onChange={setEmail} type="email" placeholder="you@example.com" required/>
+        <SInput label="Пароль" value={password} onChange={setPassword} type="password" placeholder="Пароль" required/>
+        {error&&<div style={{background:T.dangerBg,color:T.danger,borderRadius:9,padding:"10px 12px",
+          fontSize:13,marginBottom:13}}>{error}</div>}
+        <Btn disabled={loading} style={{width:"100%",justifyContent:"center"}}
+          onClick={e=>{e.preventDefault();onLogin(email,password);}}>
+          {loading?"Входим…":"Войти"}
+        </Btn>
+      </form>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab,setTab]           = useState("today");
-  const [teachers,setTeachers] = useState(INIT_TEACHERS);
-  const [students,setStudents] = useState(INIT_STUDENTS);
-  const [subs,setSubs]         = useState(INIT_SUBS);
-  const [schedule,setSchedule] = useState(INIT_SCHEDULE);
-  const [expenses,setExpenses] = useState(INIT_EXPENSES);
+  const [teachers,setTeachers] = useState([]);
+  const [students,setStudents] = useState([]);
+  const [subs,setSubs]         = useState([]);
+  const [schedule,setSchedule] = useState([]);
+  const [expenses,setExpenses] = useState([]);
+  const [loading,setLoading]   = useState(true);
+  const [loadError,setLoadError] = useState("");
+  const [session,setSession]   = useState(null);
+  const [me,setMe]             = useState(null);
+  const [authLoading,setAuthLoading] = useState(true);
+  const [authError,setAuthError]     = useState("");
   const [selStudentId,setSelStudentId] = useState(null);
   const [modals,setModals]     = useState({addStudent:false,editStudent:false,addSub:false,addLesson:false,addExpense:false});
   const [linkModal,setLinkModal] = useState(null);
   const [teacherModal,setTeacherModal] = useState(null);
+
+  const resolveMe = async (sess) => {
+    if (!sess) { setMe(null); return; }
+    const { data } = await supabase.from("teachers").select("*").eq("auth_user_id", sess.user.id).single();
+    if (!data) {
+      setAuthError("Аккаунт не привязан к профилю преподавателя. Обратитесь к администратору.");
+      await supabase.auth.signOut();
+      setMe(null);
+      return;
+    }
+    setMe(rowToTeacher(data));
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(async ({ data:{ session:sess } }) => {
+      if (cancelled) return;
+      setSession(sess);
+      await resolveMe(sess);
+      if (!cancelled) setAuthLoading(false);
+    });
+    const { data:sub } = supabase.auth.onAuthStateChange(async (_event, sess) => {
+      if (cancelled) return;
+      setSession(sess);
+      await resolveMe(sess);
+      setAuthLoading(false);
+    });
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
+
+  const [loggingIn,setLoggingIn] = useState(false);
+  const handleLogin = async (email,password) => {
+    setLoggingIn(true); setAuthError("");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setAuthError("Неверный email или пароль");
+    setLoggingIn(false);
+  };
+  const handleLogout = async () => { await supabase.auth.signOut(); };
+
+  useEffect(() => {
+    if (!me) return;
+    let cancelled = false;
+    (async () => {
+      const [t,st,su,sc,ex] = await Promise.all([
+        supabase.from("teachers").select("*").order("id"),
+        supabase.from("students").select("*").order("id"),
+        supabase.from("subscriptions").select("*").order("id"),
+        supabase.from("schedule").select("*").order("id"),
+        supabase.from("expenses").select("*").order("id"),
+      ]);
+      if (cancelled) return;
+      const firstError = t.error||st.error||su.error||sc.error||ex.error;
+      if (firstError) { setLoadError(firstError.message); setLoading(false); return; }
+      setTeachers(t.data.map(rowToTeacher));
+      setStudents(st.data.map(rowToStudent));
+      setSubs(su.data.map(rowToSub));
+      setSchedule(sc.data.map(rowToLesson));
+      setExpenses(ex.data.map(rowToExpense));
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.id]);
 
   const showModal=(k)=>setModals(p=>({...p,[k]:true}));
   const hideModal=(k)=>setModals(p=>({...p,[k]:false}));
@@ -989,61 +1068,160 @@ export default function App() {
   const selSubs     = selStudentId ? subs.filter(s=>s.studentId===selStudentId) : [];
   const selSchedule = selStudentId ? schedule.filter(l=>l.studentId===selStudentId) : [];
 
-  const addStudent = (data) => { const id=Math.max(0,...students.map(s=>s.id))+1; setStudents(p=>[...p,{id,...data}]); };
-  const updateStudent = (id,data) => setStudents(p=>p.map(s=>s.id===id?{...s,...data}:s));
-  const deleteStudent = (id) => {
+  const dbFail = (err) => { alert("Не удалось сохранить: "+err.message); };
+
+  const addStudent = async (data) => {
+    const { data:row, error } = await supabase.from("students").insert(studentToRow(data)).select().single();
+    if (error) return dbFail(error);
+    setStudents(p=>[...p, rowToStudent(row)]);
+  };
+  const updateStudent = async (id,data) => {
+    const { error } = await supabase.from("students").update(studentToRow(data)).eq("id", id);
+    if (error) return dbFail(error);
+    setStudents(p=>p.map(s=>s.id===id?{...s,...data}:s));
+  };
+  const deleteStudent = async (id) => {
+    const { error } = await supabase.from("students").delete().eq("id", id);
+    if (error) return dbFail(error);
+    await Promise.all([
+      supabase.from("subscriptions").delete().eq("student_id", id),
+      supabase.from("schedule").delete().eq("student_id", id),
+    ]);
     setStudents(p=>p.filter(s=>s.id!==id));
     setSubs(p=>p.filter(s=>s.studentId!==id));
     setSchedule(p=>p.filter(l=>l.studentId!==id));
     setSelStudentId(null);
   };
-  const deleteSub = (id) => setSubs(p=>p.filter(s=>s.id!==id));
-  const deleteExpense = (id) => setExpenses(p=>p.filter(e=>e.id!==id));
-  const addTeacher = (data) => { const id=Math.max(0,...teachers.map(t=>t.id),0)+1; setTeachers(p=>[...p,{id,...data}]); };
-  const updateTeacher = (id,data) => setTeachers(p=>p.map(t=>t.id===id?{...t,...data}:t));
-  const deleteTeacher = (id) => setTeachers(p=>p.filter(t=>t.id!==id));
-  const addSub = (data) => {
+  const deleteSub = async (id) => {
+    const { error } = await supabase.from("subscriptions").delete().eq("id", id);
+    if (error) return dbFail(error);
+    setSubs(p=>p.filter(s=>s.id!==id));
+  };
+  const deleteExpense = async (id) => {
+    const { error } = await supabase.from("expenses").delete().eq("id", id);
+    if (error) return dbFail(error);
+    setExpenses(p=>p.filter(e=>e.id!==id));
+  };
+  const addTeacher = async (data) => {
+    const res = await fetch("/.netlify/functions/create-teacher", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ name:data.name, email:data.email, role:data.role, directions:data.directions }),
+    });
+    const body = await res.json().catch(()=>({}));
+    if (!res.ok) { alert("Не удалось создать педагога: "+(body.error||res.statusText)); return; }
+    setTeachers(p=>[...p, rowToTeacher(body.teacher)]);
+    alert(`Педагог добавлен.\nEmail: ${body.teacher.email}\nВременный пароль: ${body.tempPassword}\n\nПередайте эти данные педагогу — пароль показывается только один раз.`);
+  };
+  const updateTeacher = async (id,data) => {
+    const { error } = await supabase.from("teachers").update(teacherToRow(data)).eq("id", id);
+    if (error) return dbFail(error);
+    setTeachers(p=>p.map(t=>t.id===id?{...t,...data}:t));
+  };
+  const deleteTeacher = async (id) => {
+    const { error } = await supabase.from("teachers").delete().eq("id", id);
+    if (error) return dbFail(error);
+    setTeachers(p=>p.filter(t=>t.id!==id));
+  };
+  const addSub = async (data) => {
     const type=SUB_TYPES.find(t=>t.key===data.typeKey);
-    const id=Math.max(0,...subs.map(s=>s.id),0)+1;
-    setSubs(p=>[...p,{id,studentId:selStudentId,direction:data.direction,typeKey:data.typeKey,
+    const sub={studentId:selStudentId,direction:data.direction,typeKey:data.typeKey,
       typeLabel:type.label,price:type.price,totalLessons:type.lessons,lessonsLeft:type.lessons,
       purchaseDate:today.toISOString(),expiryDate:addMonths(today,1).toISOString(),
-      status:"active",paymentMethod:data.paymentMethod}]);
+      status:"active",paymentMethod:data.paymentMethod};
+    const { data:row, error } = await supabase.from("subscriptions").insert(subToRow(sub)).select().single();
+    if (error) return dbFail(error);
+    setSubs(p=>[...p, rowToSub(row)]);
   };
-  const markSubLesson = (subId,status) => {
+  const markSubLesson = async (subId,status) => {
     const sub=subs.find(s=>s.id===subId); if(!sub) return;
-    const id=Math.max(0,...schedule.map(l=>l.id),0)+1;
-    setSchedule(p=>[...p,{id,studentId:selStudentId,teacherId:1,subId,direction:sub.direction,date:today.toISOString(),status,accessLink:""}]);
-    if(status==="attended"||status==="missed") setSubs(p=>p.map(s=>s.id===subId?{...s,lessonsLeft:Math.max(0,s.lessonsLeft-1)}:s));
+    const lesson={studentId:selStudentId,teacherId:1,subId,direction:sub.direction,date:today.toISOString(),status,accessLink:""};
+    const { data:row, error } = await supabase.from("schedule").insert(lessonToRow(lesson)).select().single();
+    if (error) return dbFail(error);
+    setSchedule(p=>[...p, rowToLesson(row)]);
+    if(status==="attended"||status==="missed") {
+      const lessonsLeft=Math.max(0,sub.lessonsLeft-1);
+      const { error:subErr } = await supabase.from("subscriptions").update({lessons_left:lessonsLeft}).eq("id", subId);
+      if (subErr) return dbFail(subErr);
+      setSubs(p=>p.map(s=>s.id===subId?{...s,lessonsLeft}:s));
+    }
   };
-  const markLesson = (lessonId,status) => {
+  const markLesson = async (lessonId,status) => {
     const lesson=schedule.find(l=>l.id===lessonId); if(!lesson) return;
+    const { error } = await supabase.from("schedule").update({status}).eq("id", lessonId);
+    if (error) return dbFail(error);
     setSchedule(p=>p.map(l=>l.id===lessonId?{...l,status}:l));
-    if(status==="attended"||status==="missed") setSubs(p=>p.map(s=>s.id===lesson.subId?{...s,lessonsLeft:Math.max(0,s.lessonsLeft-1)}:s));
+    if(status==="attended"||status==="missed") {
+      const sub=subs.find(s=>s.id===lesson.subId);
+      if (sub) {
+        const lessonsLeft=Math.max(0,sub.lessonsLeft-1);
+        const { error:subErr } = await supabase.from("subscriptions").update({lessons_left:lessonsLeft}).eq("id", sub.id);
+        if (subErr) return dbFail(subErr);
+        setSubs(p=>p.map(s=>s.id===lesson.subId?{...s,lessonsLeft}:s));
+      }
+    }
   };
-  const sendLink = (lessonId,link) => {
-    if(lessonId) setSchedule(p=>p.map(l=>l.id===lessonId?{...l,accessLink:link}:l));
+  const sendLink = async (lessonId,link) => {
+    if(lessonId) {
+      const { error } = await supabase.from("schedule").update({access_link:link}).eq("id", lessonId);
+      if (error) return dbFail(error);
+      setSchedule(p=>p.map(l=>l.id===lessonId?{...l,accessLink:link}:l));
+    }
     setLinkModal(null);
   };
   const openLink = (lessonId,contactName,messenger) => setLinkModal({lessonId,contactName,messenger});
-  const addLesson = (data) => {
-    const id=Math.max(0,...schedule.map(l=>l.id),0)+1;
-    setSchedule(p=>[...p,{id,studentId:data.studentId,teacherId:data.teacherId,subId:data.subId,
-      direction:data.direction,date:`${data.date}T${data.time}:00`,status:"planned",accessLink:""}]);
+  const addLesson = async (data) => {
+    const lesson={studentId:data.studentId,teacherId:data.teacherId,subId:data.subId,
+      direction:data.direction,date:`${data.date}T${data.time}:00`,status:"planned",accessLink:""};
+    const { data:row, error } = await supabase.from("schedule").insert(lessonToRow(lesson)).select().single();
+    if (error) return dbFail(error);
+    setSchedule(p=>[...p, rowToLesson(row)]);
   };
-  const addExpense = (data) => {
-    const id=Math.max(0,...expenses.map(e=>e.id),0)+1;
-    setExpenses(p=>[...p,{id,date:today.toISOString(),...data}]);
+  const addExpense = async (data) => {
+    const expense={date:today.toISOString(),...data};
+    const { data:row, error } = await supabase.from("expenses").insert(expenseToRow(expense)).select().single();
+    if (error) return dbFail(error);
+    setExpenses(p=>[...p, rowToExpense(row)]);
   };
 
+  const isAdmin = me?.role==="admin";
   const tabCfg=[
     {key:"today",   label:"Сегодня",    icon:IC.today},
     {key:"students",label:"Ученики",    icon:IC.users},
     {key:"calendar",label:"Расписание", icon:IC.cal},
-    {key:"finances",label:"Финансы",    icon:IC.money},
+    ...(isAdmin?[{key:"finances",label:"Финансы", icon:IC.money}]:[]),
     {key:"teachers",label:"Педагоги",   icon:IC.teacher},
   ];
   const warnCount=subs.filter(s=>s.status==="active"&&s.lessonsLeft<=1).length;
+
+  if (authLoading) {
+    return (
+      <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",
+        justifyContent:"center",color:T.textSub,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}}>
+        Загрузка…
+      </div>
+    );
+  }
+  if (!session||!me) {
+    return <LoginScreen onLogin={handleLogin} error={authError} loading={loggingIn}/>;
+  }
+  if (loading) {
+    return (
+      <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",
+        justifyContent:"center",color:T.textSub,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}}>
+        Загрузка данных…
+      </div>
+    );
+  }
+  if (loadError) {
+    return (
+      <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",
+        justifyContent:"center",padding:20,textAlign:"center",color:T.danger,
+        fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}}>
+        Не удалось загрузить данные: {loadError}
+      </div>
+    );
+  }
 
   return (
     <div style={{minHeight:"100vh",background:T.bg,
@@ -1062,11 +1240,17 @@ export default function App() {
         }}>
           <img src="/logo.png" alt="Азбука Музыки"
                style={{height: 44, objectFit: "contain"}}/>
-          {warnCount > 0 && (
-            <div style={{background: "#C94A2A", color: "#fff",
-              borderRadius: 20, padding: "4px 12px",
-              fontSize: 12, fontWeight: 700}}>⚠ {warnCount}</div>
-          )}
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {warnCount > 0 && (
+              <div style={{background: "#C94A2A", color: "#fff",
+                borderRadius: 20, padding: "4px 12px",
+                fontSize: 12, fontWeight: 700}}>⚠ {warnCount}</div>
+            )}
+            <button onClick={handleLogout} style={{border:"none",background:"rgba(255,255,255,.12)",
+              color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+              Выйти
+            </button>
+          </div>
         </div>
       )}
 
@@ -1083,11 +1267,11 @@ export default function App() {
       ) : tab==="calendar" ? (
         <CalendarScreen students={students} subs={subs} schedule={schedule} teachers={teachers}
           onMark={markLesson} onLink={openLink} onAddLesson={()=>showModal("addLesson")}/>
-      ) : tab==="finances" ? (
+      ) : tab==="finances"&&isAdmin ? (
         <FinancesScreen subs={subs} schedule={schedule} expenses={expenses}
           onAddExpense={()=>showModal("addExpense")} onDeleteExpense={deleteExpense}/>
       ) : (
-        <TeachersScreen teachers={teachers}
+        <TeachersScreen teachers={teachers} isAdmin={isAdmin}
           onAdd={()=>setTeacherModal({mode:"add"})}
           onEdit={(t)=>setTeacherModal({mode:"edit",teacher:t})}
           onDelete={deleteTeacher}/>
