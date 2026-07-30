@@ -50,6 +50,7 @@ const ROLE_OPTIONS = [
 ];
 const ROLE_LABELS = {admin:"Администратор", teacher:"Педагог"};
 const TEACHER_RATE = 800;
+const TRIAL_TEACHER_RATE = 500;
 const WEEK_DAYS    = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 const MONTH_NAMES  = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 
@@ -672,10 +673,12 @@ function FinancesScreen({subs,schedule,expenses,onAddExpense,onDeleteExpense}) {
   const income=monthSubs.reduce((a,s)=>a+s.price,0);
   const monthExp=expenses.filter(e=>{const d=new Date(e.date);return d.getMonth()===m&&d.getFullYear()===y;});
   const expTotal=monthExp.reduce((a,e)=>a+e.amount,0);
-  const lessonsCount=schedule.filter(l=>{
+  const attendedLessons=schedule.filter(l=>{
     const d=new Date(l.date);return l.status==="attended"&&d.getMonth()===m&&d.getFullYear()===y;
-  }).length;
-  const payroll=lessonsCount*TEACHER_RATE;
+  });
+  const trialCount=attendedLessons.filter(l=>subs.find(s=>s.id===l.subId)?.typeKey==="trial").length;
+  const regularCount=attendedLessons.length-trialCount;
+  const payroll=regularCount*TEACHER_RATE+trialCount*TRIAL_TEACHER_RATE;
   const totalExp=expTotal+payroll;
   const profit=income-totalExp;
   return (
@@ -698,7 +701,8 @@ function FinancesScreen({subs,schedule,expenses,onAddExpense,onDeleteExpense}) {
       </div>
       <Card>
         <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>👩‍🏫 Расчёт зарплаты</div>
-        {[["Занятий проведено",String(lessonsCount)],["Ставка за занятие",fmtMoney(TEACHER_RATE)]].map(([l,v])=>(
+        {[["Обычных занятий",String(regularCount)],["Ставка за обычное занятие",fmtMoney(TEACHER_RATE)],
+          ["Пробных занятий",String(trialCount)],["Ставка за пробное занятие",fmtMoney(TRIAL_TEACHER_RATE)]].map(([l,v])=>(
           <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:13,
             padding:"6px 0",borderBottom:`1px solid ${T.border}`}}>
             <span style={{color:T.textSub}}>{l}</span><span style={{fontWeight:700}}>{v}</span>
