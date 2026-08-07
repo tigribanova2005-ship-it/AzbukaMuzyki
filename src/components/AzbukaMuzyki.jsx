@@ -878,7 +878,7 @@ function AddSubModal({student,onClose,onSave}) {
 }
 
 function AddLessonModal({students,teachers,subs,onClose,onSave}) {
-  const [f,setF]=useState({studentId:students[0]?.id||"",teacherId:1,direction:DIRECTIONS[0],date:todayStr,time:"10:00"});
+  const [f,setF]=useState({studentId:students[0]?.id||"",teacherId:teachers[0]?.id||"",direction:DIRECTIONS[0],date:todayStr,time:"10:00"});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const matchSub=subs.find(sub=>sub.studentId===Number(f.studentId)&&sub.direction===f.direction&&sub.status==="active");
   return (
@@ -1200,7 +1200,7 @@ export default function App() {
   };
   const markSubLesson = async (subId,status) => {
     const sub=subs.find(s=>s.id===subId); if(!sub) return;
-    const lesson={studentId:selStudentId,teacherId:1,subId,direction:sub.direction,date:today.toISOString(),status,accessLink:""};
+    const lesson={studentId:selStudentId,teacherId:me.id,subId,direction:sub.direction,date:today.toISOString(),status,accessLink:""};
     const { data:row, error } = await supabase.from("schedule").insert(lessonToRow(lesson)).select().single();
     if (error) return dbFail(error);
     setSchedule(p=>[...p, rowToLesson(row)]);
