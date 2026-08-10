@@ -216,7 +216,7 @@ const Modal = ({title,onClose,children,onSave,saveLabel="Сохранить"}) =
   </div>
 );
 
-function LessonCard({lesson,student,teacher,sub,onMark,onLink,compact}) {
+function LessonCard({lesson,student,teacher,sub,onMark,onLink,onEdit,onDelete,compact}) {
   const [open,setOpen] = useState(false);
   if(!student) return null;
   const tc = teacherColor(lesson.teacherId);
@@ -226,8 +226,8 @@ function LessonCard({lesson,student,teacher,sub,onMark,onLink,compact}) {
   return (
     <div style={{background:T.surface,borderRadius:12,marginBottom:8,overflow:"hidden",
       boxShadow:"0 1px 4px rgba(0,0,0,.06)",borderLeft:`4px solid ${tc.dot}`}}>
-      <div onClick={()=>isPlanned&&setOpen(o=>!o)} style={{padding:"12px 14px",
-        display:"flex",alignItems:"center",gap:10,cursor:isPlanned?"pointer":"default"}}>
+      <div onClick={()=>setOpen(o=>!o)} style={{padding:"12px 14px",
+        display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
         <div style={{fontWeight:800,fontSize:15,color:T.textMain,minWidth:44,flexShrink:0}}>
           {fmtTime(lesson.date)}
         </div>
@@ -244,13 +244,15 @@ function LessonCard({lesson,student,teacher,sub,onMark,onLink,compact}) {
         </div>
         <Badge color={sm.color}>{sm.label}</Badge>
       </div>
-      {isPlanned&&open&&(
+      {open&&(
         <div style={{padding:"0 14px 12px",display:"flex",gap:6,flexWrap:"wrap",
           borderTop:`1px solid ${T.border}`,paddingTop:10}}>
-          <Btn small variant="success" onClick={()=>{onMark(lesson.id,"attended");setOpen(false);}}>{IC.check} Пришёл</Btn>
-          <Btn small variant="danger"  onClick={()=>{onMark(lesson.id,"missed");setOpen(false);}}>{IC.close} Пропуск</Btn>
-          <Btn small variant="warning" onClick={()=>{onMark(lesson.id,"rescheduled");setOpen(false);}}>{IC.repeat} Перенос</Btn>
-          <Btn small variant="ghost"   onClick={()=>onLink(lesson.id,contactName,student.messenger)}>{IC.send} Пропуск</Btn>
+          {isPlanned&&<Btn small variant="success" onClick={()=>{onMark(lesson.id,"attended");setOpen(false);}}>{IC.check} Пришёл</Btn>}
+          {isPlanned&&<Btn small variant="danger"  onClick={()=>{onMark(lesson.id,"missed");setOpen(false);}}>{IC.close} Пропуск</Btn>}
+          {isPlanned&&<Btn small variant="warning" onClick={()=>{onMark(lesson.id,"rescheduled");setOpen(false);}}>{IC.repeat} Перенос</Btn>}
+          {isPlanned&&<Btn small variant="ghost"   onClick={()=>onLink(lesson.id,contactName,student.messenger)}>{IC.send} Пропуск</Btn>}
+          <Btn small variant="ghost" onClick={()=>{setOpen(false);onEdit(lesson);}}>Изменить</Btn>
+          <Btn small variant="danger" onClick={()=>{setOpen(false);if(confirm("Удалить это занятие?"))onDelete(lesson.id);}}>Удалить</Btn>
         </div>
       )}
       {!isPlanned&&lesson.accessLink&&(
@@ -260,7 +262,7 @@ function LessonCard({lesson,student,teacher,sub,onMark,onLink,compact}) {
   );
 }
 
-function TodayScreen({students,subs,schedule,expenses,teachers,onMark,onLink,onSelectStudent}) {
+function TodayScreen({students,subs,schedule,expenses,teachers,onMark,onLink,onEditLesson,onDeleteLesson,onSelectStudent}) {
   const todayLessons = useMemo(()=>
     schedule.filter(l=>l.date.startsWith(todayStr)).sort((a,b)=>a.date.localeCompare(b.date)),[schedule]);
   const monthLessons = schedule.filter(l=>{
@@ -341,7 +343,7 @@ function TodayScreen({students,subs,schedule,expenses,teachers,onMark,onLink,onS
           student={students.find(s=>s.id===lesson.studentId)}
           teacher={teachers.find(t=>t.id===lesson.teacherId)}
           sub={subs.find(s=>s.id===lesson.subId)}
-          onMark={onMark} onLink={onLink}/>
+          onMark={onMark} onLink={onLink} onEdit={onEditLesson} onDelete={onDeleteLesson}/>
       ))}
     </div>
   );
@@ -602,7 +604,7 @@ function StudentDetail({student,subs,schedule,teachers,onBack,onAddSub,onMarkSub
   );
 }
 
-function CalendarScreen({students,subs,schedule,teachers,onMark,onLink,onAddLesson}) {
+function CalendarScreen({students,subs,schedule,teachers,onMark,onLink,onAddLesson,onEditLesson,onDeleteLesson}) {
   const [weekStart,setWeekStart]=useState(getWeekStart(today));
   const [selDay,setSelDay]=useState(todayStr);
   const weekDays=useMemo(()=>[0,1,2,3,4,5,6].map(i=>addDays(weekStart,i)),[weekStart]);
@@ -626,12 +628,13 @@ function CalendarScreen({students,subs,schedule,teachers,onMark,onLink,onAddLess
             <div key={ds} onClick={()=>setSelDay(ds)} style={{flex:1,display:"flex",flexDirection:"column",
               alignItems:"center",padding:"6px 2px 10px",cursor:"pointer",
               borderBottom:isSel?`2.5px solid ${T.accent}`:"2.5px solid transparent"}}>
-              <div style={{fontSize:10,fontWeight:isToday?700:500,marginBottom:4,
-                color:isToday?T.accent:T.textSub}}>{WEEK_DAYS[day.getDay()]}</div>
+              <div style={{fontSize:10,fontWeight:isSel?700:500,marginBottom:4,
+                color:isSel?T.accent:T.textSub}}>{WEEK_DAYS[day.getDay()]}</div>
               <div style={{width:28,height:28,borderRadius:14,display:"flex",alignItems:"center",
                 justifyContent:"center",fontSize:13,fontWeight:700,
-                background:isToday?T.accent:isSel?T.primaryLight:"transparent",
-                color:isToday?"#fff":isSel?T.primary:T.textMain}}>{day.getDate()}</div>
+                background:isSel?T.accent:"transparent",
+                border:isToday&&!isSel?`1.5px solid ${T.accent}`:"1.5px solid transparent",
+                color:isSel?"#fff":isToday?T.accent:T.textMain}}>{day.getDate()}</div>
               {cnt>0&&<div style={{width:5,height:5,borderRadius:3,marginTop:3,
                 background:isSel?T.accent:T.textSub,opacity:.6}}/>}
             </div>
@@ -660,7 +663,7 @@ function CalendarScreen({students,subs,schedule,teachers,onMark,onLink,onAddLess
             student={students.find(s=>s.id===lesson.studentId)}
             teacher={teachers.find(t=>t.id===lesson.teacherId)}
             sub={subs.find(s=>s.id===lesson.subId)}
-            onMark={onMark} onLink={onLink}/>
+            onMark={onMark} onLink={onLink} onEdit={onEditLesson} onDelete={onDeleteLesson}/>
         ))}
       </div>
     </div>
@@ -900,6 +903,28 @@ function AddLessonModal({students,teachers,subs,onClose,onSave}) {
   );
 }
 
+function EditLessonModal({lesson,student,teachers,onClose,onSave}) {
+  const [f,setF]=useState({teacherId:lesson.teacherId,direction:lesson.direction,
+    date:toDateStr(new Date(lesson.date)),time:fmtTime(lesson.date)});
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  return (
+    <Modal title="Изменить занятие" onClose={onClose}
+      onSave={()=>onSave({...f,teacherId:Number(f.teacherId)})}
+      saveLabel="Сохранить">
+      <div style={{background:T.primaryLight,borderRadius:9,padding:"10px 12px",fontSize:13,fontWeight:600,marginBottom:14}}>
+        Ученик: {student?.fullName}
+      </div>
+      <SSelect label="Направление" value={f.direction} onChange={v=>s("direction",v)} options={DIRECTIONS.map(d=>({value:d,label:d}))}/>
+      <SSelect label="Педагог" value={String(f.teacherId)} onChange={v=>s("teacherId",v)} options={teachers.map(t=>({value:String(t.id),label:t.name}))}/>
+      <SInput label="Дата" value={f.date} onChange={v=>s("date",v)} type="date" required/>
+      <SInput label="Время" value={f.time} onChange={v=>s("time",v)} type="time" required/>
+      <div style={{background:T.muted,borderRadius:9,padding:"10px 12px",fontSize:12,color:T.textSub}}>
+        Чтобы поменять ученика — удалите занятие и создайте новое через «Добавить занятие», чтобы корректно привязался абонемент.
+      </div>
+    </Modal>
+  );
+}
+
 function AddExpenseModal({onClose,onSave}) {
   const [f,setF]=useState({category:EXPENSE_CATS[0],amount:"",comment:""});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
@@ -1060,6 +1085,7 @@ export default function App() {
   const [linkModal,setLinkModal] = useState(null);
   const [teacherModal,setTeacherModal] = useState(null);
   const [tempCred,setTempCred] = useState(null);
+  const [editLesson,setEditLesson] = useState(null);
   const [changePwOpen,setChangePwOpen] = useState(false);
 
   const resolveMe = async (sess) => {
@@ -1242,6 +1268,17 @@ export default function App() {
     if (error) return dbFail(error);
     setSchedule(p=>[...p, rowToLesson(row)]);
   };
+  const updateLesson = async (id,data) => {
+    const patch = { teacher_id:data.teacherId, direction:data.direction, date:`${data.date}T${data.time}:00` };
+    const { error } = await supabase.from("schedule").update(patch).eq("id", id);
+    if (error) return dbFail(error);
+    setSchedule(p=>p.map(l=>l.id===id?{...l,teacherId:data.teacherId,direction:data.direction,date:patch.date}:l));
+  };
+  const deleteLesson = async (id) => {
+    const { error } = await supabase.from("schedule").delete().eq("id", id);
+    if (error) return dbFail(error);
+    setSchedule(p=>p.filter(l=>l.id!==id));
+  };
   const addExpense = async (data) => {
     const expense={date:today.toISOString(),...data};
     const { data:row, error } = await supabase.from("expenses").insert(expenseToRow(expense)).select().single();
@@ -1330,12 +1367,14 @@ export default function App() {
           onEdit={()=>showModal("editStudent")} onDelete={()=>deleteStudent(selStudentId)} onDeleteSub={deleteSub}/>
       ) : tab==="today" ? (
         <TodayScreen students={students} subs={subs} schedule={schedule} expenses={expenses}
-          teachers={teachers} onMark={markLesson} onLink={openLink} onSelectStudent={setSelStudentId}/>
+          teachers={teachers} onMark={markLesson} onLink={openLink} onSelectStudent={setSelStudentId}
+          onEditLesson={setEditLesson} onDeleteLesson={deleteLesson}/>
       ) : tab==="students" ? (
         <StudentsScreen students={students} subs={subs} onSelect={setSelStudentId} onAdd={()=>showModal("addStudent")}/>
       ) : tab==="calendar" ? (
         <CalendarScreen students={students} subs={subs} schedule={schedule} teachers={teachers}
-          onMark={markLesson} onLink={openLink} onAddLesson={()=>showModal("addLesson")}/>
+          onMark={markLesson} onLink={openLink} onAddLesson={()=>showModal("addLesson")}
+          onEditLesson={setEditLesson} onDeleteLesson={deleteLesson}/>
       ) : tab==="finances"&&isAdmin ? (
         <FinancesScreen subs={subs} schedule={schedule} expenses={expenses}
           onAddExpense={()=>showModal("addExpense")} onDeleteExpense={deleteExpense}/>
@@ -1373,6 +1412,9 @@ export default function App() {
         onSave={d=>{teacherModal.mode==="edit"?updateTeacher(teacherModal.teacher.id,d):addTeacher(d);setTeacherModal(null);}}/>}
       {tempCred&&<TempPasswordModal email={tempCred.email} password={tempCred.password} onClose={()=>setTempCred(null)}/>}
       {changePwOpen&&<ChangePasswordModal onClose={()=>setChangePwOpen(false)}/>}
+      {editLesson&&<EditLessonModal lesson={editLesson} student={students.find(s=>s.id===editLesson.studentId)}
+        teachers={teachers} onClose={()=>setEditLesson(null)}
+        onSave={d=>{updateLesson(editLesson.id,d);setEditLesson(null);}}/>}
     </div>
   );
 }
