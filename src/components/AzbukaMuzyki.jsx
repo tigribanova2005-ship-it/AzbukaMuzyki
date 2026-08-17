@@ -55,10 +55,14 @@ const WEEK_DAYS    = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 const MONTH_NAMES  = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 
 const today     = (() => { const d = new Date(); d.setHours(12,0,0,0); return d; })();
-const todayStr  = today.toISOString().split("T")[0];
+const todayStr  = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 const addDays   = (d,n) => { const r=new Date(d); r.setDate(r.getDate()+n); return r; };
 const addMonths = (d,n) => { const r=new Date(d); r.setMonth(r.getMonth()+n); return r; };
-const toDateStr = (d) => new Date(d).toISOString().split("T")[0];
+const toDateStr = (d) => {
+  const dt = new Date(d);
+  const yy = dt.getFullYear(), mo = String(dt.getMonth()+1).padStart(2,"0"), da = String(dt.getDate()).padStart(2,"0");
+  return `${yy}-${mo}-${da}`;
+};
 const fmtDate   = (s) => s ? new Date(s).toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric"}) : "—";
 const fmtMoney  = (n) => n.toLocaleString("ru-RU") + " ₽";
 const fmtTime   = (s) => s ? s.slice(11,16) : "";
@@ -905,7 +909,7 @@ function AddLessonModal({students,teachers,subs,onClose,onSave}) {
 
 function EditLessonModal({lesson,student,teachers,onClose,onSave}) {
   const [f,setF]=useState({teacherId:lesson.teacherId,direction:lesson.direction,
-    date:toDateStr(new Date(lesson.date)),time:fmtTime(lesson.date)});
+    date:lesson.date.slice(0,10),time:fmtTime(lesson.date)});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   return (
     <Modal title="Изменить занятие" onClose={onClose}
