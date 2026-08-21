@@ -991,9 +991,37 @@ function LinkModal({lessonId,contactName,messenger,onClose,onSend}) {
   );
 }
 
-function LoginScreen({onLogin,error,loading}) {
+function LoginScreen({onLogin,error,loading,onForgotPassword,forgotBusy,forgotSent}) {
   const [email,setEmail]=useState("");
   const [password,setPassword]=useState("");
+  const [mode,setMode]=useState("login");
+  const linkBtnStyle = {border:"none",background:"none",color:T.accent,fontSize:13,fontWeight:600,
+    cursor:"pointer",padding:0,marginTop:14,display:"block",width:"100%",textAlign:"center"};
+
+  if (mode==="forgot") {
+    return (
+      <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",
+        justifyContent:"center",padding:20,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}}>
+        <form onSubmit={e=>{e.preventDefault();onForgotPassword(email);}}
+          style={{width:"100%",maxWidth:340,background:T.surface,borderRadius:16,padding:24,
+            boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+          <div style={{fontWeight:800,fontSize:18,marginBottom:6,textAlign:"center"}}>Восстановление пароля</div>
+          <div style={{fontSize:13,color:T.textSub,marginBottom:18,textAlign:"center"}}>
+            Укажите email — пришлём ссылку для смены пароля
+          </div>
+          <SInput label="Email" value={email} onChange={setEmail} type="email" placeholder="you@example.com" required/>
+          {forgotSent&&<div style={{background:T.successBg,color:T.success,borderRadius:9,padding:"10px 12px",
+            fontSize:13,marginBottom:13}}>Если такой email зарегистрирован — письмо со ссылкой отправлено. Проверьте почту (и папку «Спам»).</div>}
+          <Btn disabled={forgotBusy} style={{width:"100%",justifyContent:"center"}}
+            onClick={e=>{e.preventDefault();onForgotPassword(email);}}>
+            {forgotBusy?"Отправляем…":"Отправить ссылку"}
+          </Btn>
+          <button type="button" onClick={()=>setMode("login")} style={linkBtnStyle}>← Назад ко входу</button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",
       justifyContent:"center",padding:20,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}}>
@@ -1008,6 +1036,45 @@ function LoginScreen({onLogin,error,loading}) {
         <Btn disabled={loading} style={{width:"100%",justifyContent:"center"}}
           onClick={e=>{e.preventDefault();onLogin(email,password);}}>
           {loading?"Входим…":"Войти"}
+        </Btn>
+        <button type="button" onClick={()=>setMode("forgot")} style={linkBtnStyle}>Забыли пароль?</button>
+      </form>
+    </div>
+  );
+}
+
+function SetPasswordScreen({onDone}) {
+  const [pw1,setPw1]=useState("");
+  const [pw2,setPw2]=useState("");
+  const [err,setErr]=useState("");
+  const [busy,setBusy]=useState(false);
+  const submit = async () => {
+    setErr("");
+    if (pw1.length<6) { setErr("Пароль должен быть не короче 6 символов"); return; }
+    if (pw1!==pw2) { setErr("Пароли не совпадают"); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: pw1 });
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    onDone();
+  };
+  return (
+    <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",
+      justifyContent:"center",padding:20,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}}>
+      <form onSubmit={e=>{e.preventDefault();submit();}}
+        style={{width:"100%",maxWidth:340,background:T.surface,borderRadius:16,padding:24,
+          boxShadow:"0 1px 4px rgba(0,0,0,.07)"}}>
+        <div style={{fontWeight:800,fontSize:18,marginBottom:6,textAlign:"center"}}>Новый пароль</div>
+        <div style={{fontSize:13,color:T.textSub,marginBottom:18,textAlign:"center"}}>
+          Задайте новый пароль для входа
+        </div>
+        <SInput label="Новый пароль" value={pw1} onChange={setPw1} type="password" placeholder="Минимум 6 символов" required/>
+        <SInput label="Повторите пароль" value={pw2} onChange={setPw2} type="password" placeholder="Ещё раз" required/>
+        {err&&<div style={{background:T.dangerBg,color:T.danger,borderRadius:9,padding:"10px 12px",
+          fontSize:13,marginBottom:13}}>{err}</div>}
+        <Btn disabled={busy} style={{width:"100%",justifyContent:"center"}}
+          onClick={e=>{e.preventDefault();submit();}}>
+          {busy?"Сохраняем…":"Сохранить пароль"}
         </Btn>
       </form>
     </div>
@@ -1091,6 +1158,9 @@ export default function App() {
   const [tempCred,setTempCred] = useState(null);
   const [editLesson,setEditLesson] = useState(null);
   const [changePwOpen,setChangePwOpen] = useState(false);
+  const [recoveryMode,setRecoveryMode] = useState(false);
+  const [forgotBusy,setForgotBusy] = useState(false);
+  const [forgotSent,setForgotSent] = useState(false);
 
   const resolveMe = async (sess) => {
     if (!sess) { setMe(null); return; }
@@ -1114,12 +1184,25 @@ export default function App() {
     });
     const { data:sub } = supabase.auth.onAuthStateChange(async (_event, sess) => {
       if (cancelled) return;
+      if (_event === "PASSWORD_RECOVERY") {
+        setSession(sess);
+        setRecoveryMode(true);
+        setAuthLoading(false);
+        return;
+      }
       setSession(sess);
       await resolveMe(sess);
       setAuthLoading(false);
     });
     return () => { cancelled = true; sub.subscription.unsubscribe(); };
   }, []);
+
+  const handleForgotPassword = async (email) => {
+    setForgotBusy(true); setForgotSent(false);
+    await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+    setForgotBusy(false);
+    setForgotSent(true);
+  };
 
   const [loggingIn,setLoggingIn] = useState(false);
   const handleLogin = async (email,password) => {
@@ -1308,8 +1391,12 @@ export default function App() {
       </div>
     );
   }
+  if (recoveryMode) {
+    return <SetPasswordScreen onDone={async ()=>{ setRecoveryMode(false); await resolveMe(session); }}/>;
+  }
   if (!session||!me) {
-    return <LoginScreen onLogin={handleLogin} error={authError} loading={loggingIn}/>;
+    return <LoginScreen onLogin={handleLogin} error={authError} loading={loggingIn}
+      onForgotPassword={handleForgotPassword} forgotBusy={forgotBusy} forgotSent={forgotSent}/>;
   }
   if (loading) {
     return (
