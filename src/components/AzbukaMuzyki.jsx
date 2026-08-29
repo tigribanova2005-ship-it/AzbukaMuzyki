@@ -131,6 +131,10 @@ const lessonToRow = (l) => ({
 const rowToExpense = (r) => ({ id:r.id, category:r.category, amount:r.amount, date:r.date, comment:r.comment||"" });
 const expenseToRow = (e) => ({ category:e.category, amount:e.amount, date:e.date, comment:e.comment||null });
 
+const rowToIncome = (r) => ({ id:r.id, category:r.category, amount:r.amount, date:r.date, comment:r.comment||"" });
+const incomeToRow = (e) => ({ category:e.category, amount:e.amount, date:e.date, comment:e.comment||null });
+const INCOME_CATS = ["Аренда 400₽/ч","Аренда 500₽/ч","Другое"];
+
 // ─── ЛОГОТИП (реальное изображение, base64) ───────────────────────────────────
 const LOGO_SRC = "data:image/jpeg;base64,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";
 
@@ -266,7 +270,7 @@ function LessonCard({lesson,student,teacher,sub,onMark,onLink,onEdit,onDelete,co
   );
 }
 
-function TodayScreen({students,subs,schedule,expenses,teachers,onMark,onLink,onEditLesson,onDeleteLesson,onSelectStudent}) {
+function TodayScreen({students,subs,schedule,teachers,onMark,onLink,onEditLesson,onDeleteLesson}) {
   const todayLessons = useMemo(()=>
     schedule.filter(l=>l.date.startsWith(todayStr)).sort((a,b)=>a.date.localeCompare(b.date)),[schedule]);
   const monthLessons = schedule.filter(l=>{
@@ -275,9 +279,6 @@ function TodayScreen({students,subs,schedule,expenses,teachers,onMark,onLink,onE
   const monthIncome = subs.filter(s=>{
     const d=new Date(s.purchaseDate); return d.getMonth()===m&&d.getFullYear()===y;
   }).reduce((a,s)=>a+s.price,0);
-  const warnSubs   = subs.filter(s=>s.status==="active"&&s.lessonsLeft===2);
-  const dangerSubs = subs.filter(s=>s.status==="active"&&s.lessonsLeft<=1);
-  const expiredSubs= subs.filter(subDateExpired);
   const dateLabel  = today.toLocaleDateString("ru-RU",{weekday:"long",day:"numeric",month:"long"});
   return (
     <div style={{padding:"16px 16px 8px"}}>
@@ -293,48 +294,6 @@ function TodayScreen({students,subs,schedule,expenses,teachers,onMark,onLink,onE
           </div>
         ))}
       </div>
-      {expiredSubs.length>0&&(
-        <div style={{background:"#FFF7F5",border:`1.5px solid #F5C5B8`,borderRadius:12,
-          padding:"10px 13px",marginBottom:10}}>
-          <div style={{fontWeight:700,color:T.accent,fontSize:12,display:"flex",alignItems:"center",gap:5,marginBottom:6}}>
-            {IC.warn} Срок абонемента истёк — остались занятия
-          </div>
-          {expiredSubs.map(s=>{
-            const st=students.find(x=>x.id===s.studentId);
-            return <div key={s.id} style={{color:T.accent,fontSize:12,paddingLeft:20}}>
-              {st?.fullName} · {s.direction} · {s.lessonsLeft} зан.</div>;
-          })}
-        </div>
-      )}
-      {dangerSubs.length>0&&(
-        <Card style={{background:T.dangerBg,border:`1.5px solid #F5C0BB`,padding:"12px 14px",marginBottom:10}}>
-          <div style={{fontWeight:700,fontSize:12,color:T.danger,display:"flex",alignItems:"center",gap:5,marginBottom:8}}>
-            {IC.warn} Последнее занятие — напомните об оплате
-          </div>
-          {dangerSubs.map(s=>{
-            const st=students.find(x=>x.id===s.studentId);
-            return <div key={s.id} onClick={()=>onSelectStudent(s.studentId)} style={{
-              display:"flex",justifyContent:"space-between",alignItems:"center",
-              padding:"6px 0",borderBottom:`1px solid #F5C0BB`,cursor:"pointer"}}>
-              <div style={{fontSize:13}}><span style={{fontWeight:600}}>{st?.fullName}</span>
-                <span style={{color:T.textSub,fontSize:11}}> · {s.direction}</span></div>
-              <Badge color="danger">1 занятие</Badge>
-            </div>;
-          })}
-        </Card>
-      )}
-      {warnSubs.length>0&&(
-        <Card style={{background:T.warningBg,border:`1.5px solid #EDD9A0`,padding:"10px 14px",marginBottom:10}}>
-          <div style={{fontWeight:700,fontSize:12,color:T.warning,display:"flex",alignItems:"center",gap:5,marginBottom:6}}>
-            🔔 Скоро закончится абонемент (2 занятия)
-          </div>
-          {warnSubs.map(s=>{
-            const st=students.find(x=>x.id===s.studentId);
-            return <div key={s.id} style={{fontSize:12,color:T.warning,paddingLeft:20}}>
-              {st?.fullName} · {s.direction}</div>;
-          })}
-        </Card>
-      )}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
         <div style={{fontWeight:700,fontSize:14,textTransform:"capitalize"}}>{dateLabel}</div>
         <Badge color={todayLessons.length>0?"accent":"muted"}>{todayLessons.length} занятий</Badge>
@@ -674,10 +633,13 @@ function CalendarScreen({students,subs,schedule,teachers,onMark,onLink,onAddLess
   );
 }
 
-function FinancesScreen({subs,schedule,expenses,onAddExpense,onDeleteExpense}) {
+function FinancesScreen({subs,schedule,expenses,income,onAddExpense,onDeleteExpense,onAddIncome,onDeleteIncome}) {
   const monthLabel=today.toLocaleDateString("ru-RU",{month:"long",year:"numeric"});
   const monthSubs=subs.filter(s=>{const d=new Date(s.purchaseDate);return d.getMonth()===m&&d.getFullYear()===y;});
-  const income=monthSubs.reduce((a,s)=>a+s.price,0);
+  const subsIncome=monthSubs.reduce((a,s)=>a+s.price,0);
+  const monthIncome=income.filter(e=>{const d=new Date(e.date);return d.getMonth()===m&&d.getFullYear()===y;});
+  const otherIncome=monthIncome.reduce((a,e)=>a+e.amount,0);
+  const totalIncome=subsIncome+otherIncome;
   const monthExp=expenses.filter(e=>{const d=new Date(e.date);return d.getMonth()===m&&d.getFullYear()===y;});
   const expTotal=monthExp.reduce((a,e)=>a+e.amount,0);
   const attendedLessons=schedule.filter(l=>{
@@ -687,16 +649,16 @@ function FinancesScreen({subs,schedule,expenses,onAddExpense,onDeleteExpense}) {
   const regularCount=attendedLessons.length-trialCount;
   const payroll=regularCount*TEACHER_RATE+trialCount*TRIAL_TEACHER_RATE;
   const totalExp=expTotal+payroll;
-  const profit=income-totalExp;
+  const profit=totalIncome-totalExp;
   return (
     <div style={{padding:16}}>
       <div style={{fontWeight:800,fontSize:16,marginBottom:14,textTransform:"capitalize"}}>📅 {monthLabel}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
         {[
-          {label:"Доход",   val:income,   icon:"💰",bg:T.successBg, color:T.success},
-          {label:"Расходы", val:totalExp, icon:"📉",bg:T.warningBg, color:T.warning},
-          {label:"Зарплата",val:payroll,  icon:"👩‍🏫",bg:T.primaryLight,color:T.primary},
-          {label:"Прибыль", val:profit,   icon:profit>=0?"📈":"⚠️",
+          {label:"Доход",   val:totalIncome, icon:"💰",bg:T.successBg, color:T.success},
+          {label:"Расходы", val:totalExp,     icon:"📉",bg:T.warningBg, color:T.warning},
+          {label:"Зарплата",val:payroll,      icon:"👩‍🏫",bg:T.primaryLight,color:T.primary},
+          {label:"Прибыль", val:profit,       icon:profit>=0?"📈":"⚠️",
             bg:profit>=0?T.successBg:T.dangerBg,color:profit>=0?T.success:T.danger},
         ].map(s=>(
           <div key={s.label} style={{background:s.bg,borderRadius:14,padding:"14px"}}>
@@ -733,7 +695,28 @@ function FinancesScreen({subs,schedule,expenses,onAddExpense,onDeleteExpense}) {
         ))}
         {monthSubs.length>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13,
           padding:"8px 0",fontWeight:700}}>
-          <span>Итого</span><span style={{color:T.success}}>{fmtMoney(income)}</span></div>}
+          <span>Итого</span><span style={{color:T.success}}>{fmtMoney(subsIncome)}</span></div>}
+      </Card>
+      <Card>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div style={{fontWeight:700,fontSize:13}}>🏠 Другие доходы (аренда и пр.)</div>
+          <Btn small variant="ghost" onClick={onAddIncome}>{IC.plus} Добавить</Btn>
+        </div>
+        {monthIncome.length===0&&<div style={{color:T.textSub,fontSize:13}}>Нет записей</div>}
+        {monthIncome.map(e=>(
+          <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+            padding:"7px 0",borderBottom:`1px solid ${T.border}`,fontSize:13}}>
+            <div><div style={{fontWeight:600}}>{e.category}</div>
+              {e.comment&&<div style={{fontSize:11,color:T.textSub}}>{e.comment}</div>}</div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontWeight:700,color:T.success}}>+{fmtMoney(e.amount)}</span>
+              <Btn small variant="ghost" onClick={()=>onDeleteIncome(e.id)} style={{padding:"4px 8px"}}>{IC.close}</Btn>
+            </div>
+          </div>
+        ))}
+        {monthIncome.length>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13,
+          padding:"8px 0",fontWeight:700}}>
+          <span>Итого</span><span style={{color:T.success}}>{fmtMoney(otherIncome)}</span></div>}
       </Card>
       <Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -887,7 +870,7 @@ function AddSubModal({student,onClose,onSave}) {
 function AddLessonModal({students,teachers,subs,onClose,onSave}) {
   const [f,setF]=useState({studentId:students[0]?.id||"",teacherId:teachers[0]?.id||"",direction:DIRECTIONS[0],date:todayStr,time:"10:00"});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
-  const matchSub=subs.find(sub=>sub.studentId===Number(f.studentId)&&sub.direction===f.direction&&sub.status==="active");
+  const matchSub=subs.find(sub=>sub.studentId===Number(f.studentId)&&sub.direction===f.direction&&sub.status==="active"&&sub.lessonsLeft>0);
   return (
     <Modal title="Добавить занятие" onClose={onClose}
       onSave={()=>onSave({...f,studentId:Number(f.studentId),teacherId:Number(f.teacherId),subId:matchSub?.id||null})}
@@ -938,6 +921,19 @@ function AddExpenseModal({onClose,onSave}) {
       <SSelect label="Категория" value={f.category} onChange={v=>s("category",v)} options={EXPENSE_CATS.map(c=>({value:c,label:c}))}/>
       <SInput label="Сумма (₽) *" value={f.amount} onChange={v=>s("amount",v)} type="number" placeholder="0" required/>
       <SInput label="Комментарий" value={f.comment} onChange={v=>s("comment",v)} placeholder="Необязательно"/>
+    </Modal>
+  );
+}
+
+function AddIncomeModal({onClose,onSave}) {
+  const [f,setF]=useState({category:INCOME_CATS[0],amount:"",comment:""});
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  return (
+    <Modal title="Добавить доход" onClose={onClose}
+      onSave={()=>{if(!f.amount){alert("Укажите сумму");return;}onSave({...f,amount:Number(f.amount)});}} saveLabel="Добавить">
+      <SSelect label="Категория" value={f.category} onChange={v=>s("category",v)} options={INCOME_CATS.map(c=>({value:c,label:c}))}/>
+      <SInput label="Сумма (₽) *" value={f.amount} onChange={v=>s("amount",v)} type="number" placeholder="0" required/>
+      <SInput label="Комментарий" value={f.comment} onChange={v=>s("comment",v)} placeholder="Например: 2 часа"/>
     </Modal>
   );
 }
@@ -1145,6 +1141,7 @@ export default function App() {
   const [subs,setSubs]         = useState([]);
   const [schedule,setSchedule] = useState([]);
   const [expenses,setExpenses] = useState([]);
+  const [income,setIncome]     = useState([]);
   const [loading,setLoading]   = useState(true);
   const [loadError,setLoadError] = useState("");
   const [session,setSession]   = useState(null);
@@ -1152,7 +1149,7 @@ export default function App() {
   const [authLoading,setAuthLoading] = useState(true);
   const [authError,setAuthError]     = useState("");
   const [selStudentId,setSelStudentId] = useState(null);
-  const [modals,setModals]     = useState({addStudent:false,editStudent:false,addSub:false,addLesson:false,addExpense:false});
+  const [modals,setModals]     = useState({addStudent:false,editStudent:false,addSub:false,addLesson:false,addExpense:false,addIncome:false});
   const [linkModal,setLinkModal] = useState(null);
   const [teacherModal,setTeacherModal] = useState(null);
   const [tempCred,setTempCred] = useState(null);
@@ -1232,6 +1229,9 @@ export default function App() {
       setSubs(su.data.map(rowToSub));
       setSchedule(sc.data.map(rowToLesson));
       setExpenses(ex.data.map(rowToExpense));
+      supabase.from("income").select("*").order("id").then(({data,error:incErr}) => {
+        if (!cancelled && !incErr && data) setIncome(data.map(rowToIncome));
+      });
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -1280,6 +1280,17 @@ export default function App() {
     if (error) return dbFail(error);
     setExpenses(p=>p.filter(e=>e.id!==id));
   };
+  const addIncome = async (data) => {
+    const entry={date:today.toISOString(),...data};
+    const { data:row, error } = await supabase.from("income").insert(incomeToRow(entry)).select().single();
+    if (error) return dbFail(error);
+    setIncome(p=>[...p, rowToIncome(row)]);
+  };
+  const deleteIncome = async (id) => {
+    const { error } = await supabase.from("income").delete().eq("id", id);
+    if (error) return dbFail(error);
+    setIncome(p=>p.filter(e=>e.id!==id));
+  };
   const addTeacher = async (data) => {
     const res = await fetch("/.netlify/functions/create-teacher", {
       method: "POST",
@@ -1319,9 +1330,10 @@ export default function App() {
     setSchedule(p=>[...p, rowToLesson(row)]);
     if(status==="attended"||status==="missed") {
       const lessonsLeft=Math.max(0,sub.lessonsLeft-1);
-      const { error:subErr } = await supabase.from("subscriptions").update({lessons_left:lessonsLeft}).eq("id", subId);
+      const patch = lessonsLeft===0 ? {lessons_left:0,status:"expired"} : {lessons_left:lessonsLeft};
+      const { error:subErr } = await supabase.from("subscriptions").update(patch).eq("id", subId);
       if (subErr) return dbFail(subErr);
-      setSubs(p=>p.map(s=>s.id===subId?{...s,lessonsLeft}:s));
+      setSubs(p=>p.map(s=>s.id===subId?{...s,...(lessonsLeft===0?{lessonsLeft,status:"expired"}:{lessonsLeft})}:s));
     }
   };
   const markLesson = async (lessonId,status) => {
@@ -1333,9 +1345,10 @@ export default function App() {
       const sub=subs.find(s=>s.id===lesson.subId);
       if (sub) {
         const lessonsLeft=Math.max(0,sub.lessonsLeft-1);
-        const { error:subErr } = await supabase.from("subscriptions").update({lessons_left:lessonsLeft}).eq("id", sub.id);
+        const patch = lessonsLeft===0 ? {lessons_left:0,status:"expired"} : {lessons_left:lessonsLeft};
+        const { error:subErr } = await supabase.from("subscriptions").update(patch).eq("id", sub.id);
         if (subErr) return dbFail(subErr);
-        setSubs(p=>p.map(s=>s.id===lesson.subId?{...s,lessonsLeft}:s));
+        setSubs(p=>p.map(s=>s.id===lesson.subId?{...s,...(lessonsLeft===0?{lessonsLeft,status:"expired"}:{lessonsLeft})}:s));
       }
     }
   };
@@ -1381,7 +1394,6 @@ export default function App() {
     ...(isAdmin?[{key:"finances",label:"Финансы", icon:IC.money}]:[]),
     {key:"teachers",label:"Педагоги",   icon:IC.teacher},
   ];
-  const warnCount=subs.filter(s=>s.status==="active"&&s.lessonsLeft<=1).length;
 
   if (authLoading) {
     return (
@@ -1434,11 +1446,6 @@ export default function App() {
           <img src="/logo.png" alt="Азбука Музыки"
                style={{height: 44, objectFit: "contain"}}/>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {warnCount > 0 && (
-              <div style={{background: "#C94A2A", color: "#fff",
-                borderRadius: 20, padding: "4px 12px",
-                fontSize: 12, fontWeight: 700}}>⚠ {warnCount}</div>
-            )}
             <button onClick={()=>setChangePwOpen(true)} style={{border:"none",background:"rgba(255,255,255,.12)",
               color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
               Пароль
@@ -1457,8 +1464,8 @@ export default function App() {
           onAddSub={()=>showModal("addSub")} onMarkSub={markSubLesson} onLink={openLink}
           onEdit={()=>showModal("editStudent")} onDelete={()=>deleteStudent(selStudentId)} onDeleteSub={deleteSub}/>
       ) : tab==="today" ? (
-        <TodayScreen students={students} subs={subs} schedule={schedule} expenses={expenses}
-          teachers={teachers} onMark={markLesson} onLink={openLink} onSelectStudent={setSelStudentId}
+        <TodayScreen students={students} subs={subs} schedule={schedule}
+          teachers={teachers} onMark={markLesson} onLink={openLink}
           onEditLesson={setEditLesson} onDeleteLesson={deleteLesson}/>
       ) : tab==="students" ? (
         <StudentsScreen students={students} subs={subs} onSelect={setSelStudentId} onAdd={()=>showModal("addStudent")}/>
@@ -1467,8 +1474,9 @@ export default function App() {
           onMark={markLesson} onLink={openLink} onAddLesson={()=>showModal("addLesson")}
           onEditLesson={setEditLesson} onDeleteLesson={deleteLesson}/>
       ) : tab==="finances"&&isAdmin ? (
-        <FinancesScreen subs={subs} schedule={schedule} expenses={expenses}
-          onAddExpense={()=>showModal("addExpense")} onDeleteExpense={deleteExpense}/>
+        <FinancesScreen subs={subs} schedule={schedule} expenses={expenses} income={income}
+          onAddExpense={()=>showModal("addExpense")} onDeleteExpense={deleteExpense}
+          onAddIncome={()=>showModal("addIncome")} onDeleteIncome={deleteIncome}/>
       ) : (
         <TeachersScreen teachers={teachers} isAdmin={isAdmin}
           onAdd={()=>setTeacherModal({mode:"add"})}
@@ -1498,6 +1506,7 @@ export default function App() {
       {modals.addSub&&selStudentId&&<AddSubModal student={selStudent} onClose={()=>hideModal("addSub")} onSave={d=>{addSub(d);hideModal("addSub");}}/>}
       {modals.addLesson&&<AddLessonModal students={students} teachers={teachers} subs={subs} onClose={()=>hideModal("addLesson")} onSave={d=>{addLesson(d);hideModal("addLesson");}}/>}
       {modals.addExpense&&<AddExpenseModal onClose={()=>hideModal("addExpense")} onSave={d=>{addExpense(d);hideModal("addExpense");}}/>}
+      {modals.addIncome&&<AddIncomeModal onClose={()=>hideModal("addIncome")} onSave={d=>{addIncome(d);hideModal("addIncome");}}/>}
       {linkModal&&<LinkModal {...linkModal} onClose={()=>setLinkModal(null)} onSend={sendLink}/>}
       {teacherModal&&<TeacherModal teacher={teacherModal.teacher} onClose={()=>setTeacherModal(null)}
         onSave={d=>{teacherModal.mode==="edit"?updateTeacher(teacherModal.teacher.id,d):addTeacher(d);setTeacherModal(null);}}/>}
