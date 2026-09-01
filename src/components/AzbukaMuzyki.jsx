@@ -634,16 +634,19 @@ function CalendarScreen({students,subs,schedule,teachers,onMark,onLink,onAddLess
 }
 
 function FinancesScreen({subs,schedule,expenses,income,onAddExpense,onDeleteExpense,onAddIncome,onDeleteIncome}) {
-  const monthLabel=today.toLocaleDateString("ru-RU",{month:"long",year:"numeric"});
-  const monthSubs=subs.filter(s=>{const d=new Date(s.purchaseDate);return d.getMonth()===m&&d.getFullYear()===y;});
+  const [viewDate,setViewDate]=useState(()=>new Date(y,m,1));
+  const vm=viewDate.getMonth(), vy=viewDate.getFullYear();
+  const isCurrentMonth = vm===m && vy===y;
+  const monthLabel=viewDate.toLocaleDateString("ru-RU",{month:"long",year:"numeric"});
+  const monthSubs=subs.filter(s=>{const d=new Date(s.purchaseDate);return d.getMonth()===vm&&d.getFullYear()===vy;});
   const subsIncome=monthSubs.reduce((a,s)=>a+s.price,0);
-  const monthIncome=income.filter(e=>{const d=new Date(e.date);return d.getMonth()===m&&d.getFullYear()===y;});
+  const monthIncome=income.filter(e=>{const d=new Date(e.date);return d.getMonth()===vm&&d.getFullYear()===vy;});
   const otherIncome=monthIncome.reduce((a,e)=>a+e.amount,0);
   const totalIncome=subsIncome+otherIncome;
-  const monthExp=expenses.filter(e=>{const d=new Date(e.date);return d.getMonth()===m&&d.getFullYear()===y;});
+  const monthExp=expenses.filter(e=>{const d=new Date(e.date);return d.getMonth()===vm&&d.getFullYear()===vy;});
   const expTotal=monthExp.reduce((a,e)=>a+e.amount,0);
   const attendedLessons=schedule.filter(l=>{
-    const d=new Date(l.date);return l.status==="attended"&&d.getMonth()===m&&d.getFullYear()===y;
+    const d=new Date(l.date);return l.status==="attended"&&d.getMonth()===vm&&d.getFullYear()===vy;
   });
   const trialCount=attendedLessons.filter(l=>subs.find(s=>s.id===l.subId)?.typeKey==="trial").length;
   const regularCount=attendedLessons.length-trialCount;
@@ -652,7 +655,14 @@ function FinancesScreen({subs,schedule,expenses,income,onAddExpense,onDeleteExpe
   const profit=totalIncome-totalExp;
   return (
     <div style={{padding:16}}>
-      <div style={{fontWeight:800,fontSize:16,marginBottom:14,textTransform:"capitalize"}}>📅 {monthLabel}</div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+        <button onClick={()=>setViewDate(d=>addMonths(d,-1))} style={{border:"none",background:T.muted,
+          borderRadius:8,padding:6,cursor:"pointer",color:T.textSub,display:"flex"}}>{IC.chevL}</button>
+        <div style={{fontWeight:800,fontSize:16,textTransform:"capitalize"}}>📅 {monthLabel}</div>
+        <button onClick={()=>setViewDate(d=>addMonths(d,1))} disabled={isCurrentMonth} style={{border:"none",
+          background:T.muted,borderRadius:8,padding:6,cursor:isCurrentMonth?"default":"pointer",
+          color:isCurrentMonth?T.border:T.textSub,display:"flex"}}>{IC.chevR}</button>
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
         {[
           {label:"Доход",   val:totalIncome, icon:"💰",bg:T.successBg, color:T.success},
