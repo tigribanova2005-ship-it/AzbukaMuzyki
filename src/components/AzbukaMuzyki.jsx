@@ -1439,65 +1439,65 @@ export default function App() {
   }
 
   return (
-    <div style={{minHeight:"100vh",background:T.bg,
+    <div style={{height:"100dvh",background:T.bg,
       fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
-      color:T.textMain,maxWidth:480,margin:"0 auto",paddingBottom:selStudentId?0:72}}>
+      color:T.textMain,maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column",overflow:"hidden"}}>
 
-      {/* Чёрная шапка с логотипом */}
-      {!selStudentId&&(
-        <div style={{
-          background: "#1A1A1A",
-          borderBottom: "none",
-          padding: "10px 20px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between"
-        }}>
-          <img src="/logo.png" alt="Азбука Музыки"
-               style={{height: 44, objectFit: "contain"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <button onClick={()=>setChangePwOpen(true)} style={{border:"none",background:"rgba(255,255,255,.12)",
-              color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-              Пароль
-            </button>
-            <button onClick={handleLogout} style={{border:"none",background:"rgba(255,255,255,.12)",
-              color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-              Выйти
-            </button>
+      <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+        {/* Чёрная шапка с логотипом */}
+        {!selStudentId&&(
+          <div style={{
+            background: "#1A1A1A",
+            borderBottom: "none",
+            padding: "10px 20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between"
+          }}>
+            <img src="/logo.png" alt="Азбука Музыки"
+                 style={{height: 44, objectFit: "contain"}}/>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <button onClick={()=>setChangePwOpen(true)} style={{border:"none",background:"rgba(255,255,255,.12)",
+                color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                Пароль
+              </button>
+              <button onClick={handleLogout} style={{border:"none",background:"rgba(255,255,255,.12)",
+                color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                Выйти
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {selStudentId ? (
-        <StudentDetail student={selStudent} subs={selSubs} schedule={selSchedule}
-          teachers={teachers} onBack={()=>setSelStudentId(null)}
-          onAddSub={()=>showModal("addSub")} onMarkSub={markSubLesson} onLink={openLink}
-          onEdit={()=>showModal("editStudent")} onDelete={()=>deleteStudent(selStudentId)} onDeleteSub={deleteSub}/>
-      ) : tab==="today" ? (
-        <TodayScreen students={students} subs={subs} schedule={schedule}
-          teachers={teachers} onMark={markLesson} onLink={openLink}
-          onEditLesson={setEditLesson} onDeleteLesson={deleteLesson}/>
-      ) : tab==="students" ? (
-        <StudentsScreen students={students} subs={subs} onSelect={setSelStudentId} onAdd={()=>showModal("addStudent")}/>
-      ) : tab==="calendar" ? (
-        <CalendarScreen students={students} subs={subs} schedule={schedule} teachers={teachers}
-          onMark={markLesson} onLink={openLink} onAddLesson={()=>showModal("addLesson")}
-          onEditLesson={setEditLesson} onDeleteLesson={deleteLesson}/>
-      ) : tab==="finances"&&isAdmin ? (
-        <FinancesScreen subs={subs} schedule={schedule} expenses={expenses} income={income}
-          onAddExpense={()=>showModal("addExpense")} onDeleteExpense={deleteExpense}
-          onAddIncome={()=>showModal("addIncome")} onDeleteIncome={deleteIncome}/>
-      ) : (
-        <TeachersScreen teachers={teachers} isAdmin={isAdmin}
-          onAdd={()=>setTeacherModal({mode:"add"})}
-          onEdit={(t)=>setTeacherModal({mode:"edit",teacher:t})}
-          onDelete={deleteTeacher}/>
-      )}
+        {selStudentId ? (
+          <StudentDetail student={selStudent} subs={selSubs} schedule={selSchedule}
+            teachers={teachers} onBack={()=>setSelStudentId(null)}
+            onAddSub={()=>showModal("addSub")} onMarkSub={markSubLesson} onLink={openLink}
+            onEdit={()=>showModal("editStudent")} onDelete={()=>deleteStudent(selStudentId)} onDeleteSub={deleteSub}/>
+        ) : tab==="today" ? (
+          <TodayScreen students={students} subs={subs} schedule={schedule}
+            teachers={teachers} onMark={markLesson} onLink={openLink}
+            onEditLesson={setEditLesson} onDeleteLesson={deleteLesson}/>
+        ) : tab==="students" ? (
+          <StudentsScreen students={students} subs={subs} onSelect={setSelStudentId} onAdd={()=>showModal("addStudent")}/>
+        ) : tab==="calendar" ? (
+          <CalendarScreen students={students} subs={subs} schedule={schedule} teachers={teachers}
+            onMark={markLesson} onLink={openLink} onAddLesson={()=>showModal("addLesson")}
+            onEditLesson={setEditLesson} onDeleteLesson={deleteLesson}/>
+        ) : tab==="finances"&&isAdmin ? (
+          <FinancesScreen subs={subs} schedule={schedule} expenses={expenses} income={income}
+            onAddExpense={()=>showModal("addExpense")} onDeleteExpense={deleteExpense}
+            onAddIncome={()=>showModal("addIncome")} onDeleteIncome={deleteIncome}/>
+        ) : (
+          <TeachersScreen teachers={teachers} isAdmin={isAdmin}
+            onAdd={()=>setTeacherModal({mode:"add"})}
+            onEdit={(t)=>setTeacherModal({mode:"edit",teacher:t})}
+            onDelete={deleteTeacher}/>
+        )}
+      </div>
 
       {!selStudentId&&(
-        <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",
-          width:"100%",maxWidth:480,background:T.surface,borderTop:`1px solid ${T.border}`,
-          display:"flex",zIndex:100}}>
+        <div style={{flexShrink:0,background:T.surface,borderTop:`1px solid ${T.border}`,display:"flex"}}>
           {tabCfg.map(item=>(
             <button key={item.key} onClick={()=>setTab(item.key)} style={{
               flex:1,border:"none",background:"none",padding:"10px 0 12px",cursor:"pointer",
