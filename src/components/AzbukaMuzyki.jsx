@@ -88,6 +88,17 @@ const getWeekStart = (date) => {
   d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
   return d;
 };
+// Групповое занятие создаёт по одной записи на каждого ученика — считаем такие
+// записи (один педагог, одно и то же время) за одно занятие, а не за N.
+const dedupeLessons = (lessons) => {
+  const seen = new Set();
+  return lessons.filter(l => {
+    const key = `${l.teacherId}|${l.date}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
 
 const m = today.getMonth(), y = today.getFullYear();
 
@@ -273,9 +284,9 @@ function LessonCard({lesson,student,teacher,sub,onMark,onLink,onEdit,onDelete,co
 function TodayScreen({students,subs,schedule,teachers,onMark,onLink,onEditLesson,onDeleteLesson}) {
   const todayLessons = useMemo(()=>
     schedule.filter(l=>l.date.startsWith(todayStr)).sort((a,b)=>a.date.localeCompare(b.date)),[schedule]);
-  const monthLessons = schedule.filter(l=>{
+  const monthLessons = dedupeLessons(schedule.filter(l=>{
     const d=new Date(l.date); return l.status==="attended"&&d.getMonth()===m&&d.getFullYear()===y;
-  }).length;
+  })).length;
   const monthIncome = subs.filter(s=>{
     const d=new Date(s.purchaseDate); return d.getMonth()===m&&d.getFullYear()===y;
   }).reduce((a,s)=>a+s.price,0);
@@ -460,10 +471,15 @@ function StudentDetail({student,subs,schedule,teachers,onBack,onAddSub,onMarkSub
                       <div style={{fontWeight:800,fontSize:14}}>{sub.direction}</div>
                       <div style={{fontSize:12,color:T.textSub,marginTop:1}}>{sub.typeLabel}</div>
                     </div>
-                    <div style={{textAlign:"right"}}>
-                      <div style={{fontWeight:800,fontSize:24,lineHeight:1,
-                        color:alert==="danger"?T.danger:alert==="warning"?T.warning:T.primary}}>{sub.lessonsLeft}</div>
-                      <div style={{fontSize:11,color:T.textSub}}>из {sub.totalLessons}</div>
+                    <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontWeight:800,fontSize:24,lineHeight:1,
+                          color:alert==="danger"?T.danger:alert==="warning"?T.warning:T.primary}}>{sub.lessonsLeft}</div>
+                        <div style={{fontSize:11,color:T.textSub}}>из {sub.totalLessons}</div>
+                      </div>
+                      <Btn small variant="ghost"
+                        onClick={()=>{if(confirm("Удалить этот абонемент?"))onDeleteSub(sub.id);}}
+                        style={{padding:"4px 8px"}}>{IC.close}</Btn>
                     </div>
                   </div>
                   <div style={{height:5,background:T.border,borderRadius:3,marginBottom:10,overflow:"hidden"}}>
@@ -645,9 +661,9 @@ function FinancesScreen({subs,schedule,expenses,income,onAddExpense,onDeleteExpe
   const totalIncome=subsIncome+otherIncome;
   const monthExp=expenses.filter(e=>{const d=new Date(e.date);return d.getMonth()===vm&&d.getFullYear()===vy;});
   const expTotal=monthExp.reduce((a,e)=>a+e.amount,0);
-  const attendedLessons=schedule.filter(l=>{
+  const attendedLessons=dedupeLessons(schedule.filter(l=>{
     const d=new Date(l.date);return l.status==="attended"&&d.getMonth()===vm&&d.getFullYear()===vy;
-  });
+  }));
   const trialCount=attendedLessons.filter(l=>subs.find(s=>s.id===l.subId)?.typeKey==="trial").length;
   const regularCount=attendedLessons.length-trialCount;
   const payroll=regularCount*TEACHER_RATE+trialCount*TRIAL_TEACHER_RATE;
@@ -1281,8 +1297,11 @@ export default function App() {
     setSelStudentId(null);
   };
   const deleteSub = async (id) => {
+    const { error: unlinkErr } = await supabase.from("schedule").update({sub_id:null}).eq("sub_id", id);
+    if (unlinkErr) return dbFail(unlinkErr);
     const { error } = await supabase.from("subscriptions").delete().eq("id", id);
     if (error) return dbFail(error);
+    setSchedule(p=>p.map(l=>l.subId===id?{...l,subId:null}:l));
     setSubs(p=>p.filter(s=>s.id!==id));
   };
   const deleteExpense = async (id) => {
